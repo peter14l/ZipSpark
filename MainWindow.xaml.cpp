@@ -368,4 +368,113 @@ namespace winrt::ZipSpark_New::implementation
             HideExtractionProgress();
         });
     }
+
+    void MainWindow::DonateButton_Click(IInspectable const&, RoutedEventArgs const&)
+    {
+        // Create donate dialog
+        Controls::ContentDialog dialog;
+        dialog.XamlRoot(this->Content().XamlRoot());
+        dialog.Title(winrt::box_value(L"Support ZipSpark ❤️"));
+        dialog.CloseButtonText(L"Close");
+        
+        // Create content
+        Controls::StackPanel content;
+        content.Spacing(16);
+        content.Padding({ 0, 8, 0, 0 });
+        
+        // Thank you message
+        Controls::TextBlock thankYou;
+        thankYou.Text(L"Thank you for considering a donation! Your support helps keep ZipSpark free and open-source.");
+        thankYou.TextWrapping(TextWrapping::Wrap);
+        content.Children().Append(thankYou);
+        
+        // UPI Section (India)
+        Controls::TextBlock upiHeader;
+        upiHeader.Text(L"UPI (India)");
+        upiHeader.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+        upiHeader.Margin({ 0, 8, 0, 0 });
+        content.Children().Append(upiHeader);
+        
+        Controls::TextBox upiId;
+        upiId.Text(L"9831060419@fam");
+        upiId.IsReadOnly(true);
+        content.Children().Append(upiId);
+        
+        Controls::Button copyUpiButton;
+        copyUpiButton.Content(winrt::box_value(L"Copy UPI ID"));
+        copyUpiButton.Click([upiId](auto&&, auto&&) {
+            winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+            package.SetText(upiId.Text());
+            winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+        });
+        content.Children().Append(copyUpiButton);
+        
+        // International Section
+        Controls::TextBlock intlHeader;
+        intlHeader.Text(L"International");
+        intlHeader.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+        intlHeader.Margin({ 0, 16, 0, 0 });
+        content.Children().Append(intlHeader);
+        
+        Controls::HyperlinkButton paypalLink;
+        paypalLink.Content(winrt::box_value(L"💳 Donate via PayPal"));
+        paypalLink.NavigateUri(winrt::Windows::Foundation::Uri(L"https://paypal.me/yourpaypal"));
+        content.Children().Append(paypalLink);
+        
+        Controls::HyperlinkButton kofiLink;
+        kofiLink.Content(winrt::box_value(L"☕ Buy Me a Coffee"));
+        kofiLink.NavigateUri(winrt::Windows::Foundation::Uri(L"https://ko-fi.com/yourname"));
+        content.Children().Append(kofiLink);
+        
+        dialog.Content(content);
+        dialog.ShowAsync();
+    }
+
+    void MainWindow::AboutButton_Click(IInspectable const&, RoutedEventArgs const&)
+    {
+        // Create about dialog
+        Controls::ContentDialog dialog;
+        dialog.XamlRoot(this->Content().XamlRoot());
+        dialog.Title(winrt::box_value(L"About ZipSpark"));
+        dialog.CloseButtonText(L"Close");
+        
+        // Create content
+        Controls::StackPanel content;
+        content.Spacing(12);
+        content.Padding({ 0, 8, 0, 0 });
+        
+        // App name and version
+        Controls::TextBlock appName;
+        appName.Text(L"ZipSpark");
+        appName.FontSize(28);
+        appName.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
+        content.Children().Append(appName);
+        
+        Controls::TextBlock version;
+        version.Text(L"Version 1.0.0");
+        content.Children().Append(version);
+        
+        // Description
+        Controls::TextBlock description;
+        description.Text(L"A fast, modern archive extraction utility for Windows.\n\nSupports ZIP, 7z, RAR, TAR, GZ, XZ and more.");
+        description.TextWrapping(TextWrapping::Wrap);
+        description.Margin({ 0, 8, 0, 0 });
+        content.Children().Append(description);
+        
+        // GitHub link
+        Controls::HyperlinkButton githubLink;
+        githubLink.Content(winrt::box_value(L"🔗 View on GitHub"));
+        githubLink.NavigateUri(winrt::Windows::Foundation::Uri(L"https://github.com/peter14l/ZipSpark"));
+        githubLink.Margin({ 0, 8, 0, 0 });
+        content.Children().Append(githubLink);
+        
+        // Copyright
+        Controls::TextBlock copyright;
+        copyright.Text(L"© 2026 ZipSpark. Open-source software.");
+        copyright.Margin({ 0, 8, 0, 0 });
+        content.Children().Append(copyright);
+        
+        dialog.Content(content);
+        dialog.ShowAsync();
+    }
 }
