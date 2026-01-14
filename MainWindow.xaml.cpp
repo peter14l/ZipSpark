@@ -15,6 +15,7 @@
 #include <winrt/Windows.Storage.Pickers.h>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
 #include <winrt/Windows.Storage.h>
+#include <winrt/Windows.UI.Text.h>
 #include <microsoft.ui.xaml.window.h>
 #include <Shobjidl.h>
 #include <thread>
@@ -391,7 +392,6 @@ namespace winrt::ZipSpark_New::implementation
         // UPI Section (India)
         Controls::TextBlock upiHeader;
         upiHeader.Text(L"UPI (India)");
-        upiHeader.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
         upiHeader.Margin({ 0, 8, 0, 0 });
         content.Children().Append(upiHeader);
         
@@ -412,7 +412,6 @@ namespace winrt::ZipSpark_New::implementation
         // International Section
         Controls::TextBlock intlHeader;
         intlHeader.Text(L"International");
-        intlHeader.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
         intlHeader.Margin({ 0, 16, 0, 0 });
         content.Children().Append(intlHeader);
         
@@ -447,7 +446,6 @@ namespace winrt::ZipSpark_New::implementation
         Controls::TextBlock appName;
         appName.Text(L"ZipSpark");
         appName.FontSize(28);
-        appName.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
         content.Children().Append(appName);
         
         Controls::TextBlock version;
