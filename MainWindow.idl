@@ -4,6 +4,5 @@ namespace ZipSpark_New
     runtimeclass MainWindow : Microsoft.UI.Xaml.Window
     {
         MainWindow();
-        Int32 MyProperty;
     }
 }

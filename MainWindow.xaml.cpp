@@ -48,10 +48,13 @@ namespace winrt::ZipSpark_New::implementation
             if (Microsoft::UI::Composition::SystemBackdrops::MicaController::IsSupported())
             {
                 auto micaController = Microsoft::UI::Composition::SystemBackdrops::MicaController();
-                micaController.SetSystemBackdropConfiguration(
-                    Microsoft::UI::Composition::SystemBackdrops::SystemBackdropConfiguration()
-                );
-                micaController.AddSystemBackdropTarget(*this);
+                
+                // Get the window as ICompositionSupportsSystemBackdrop
+                auto windowNative = this->try_as<Microsoft::UI::Composition::ICompositionSupportsSystemBackdrop>();
+                if (windowNative)
+                {
+                    micaController.AddSystemBackdropTarget(windowNative);
+                }
             }
         }
         catch (...)
