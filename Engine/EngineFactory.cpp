@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "EngineFactory.h"
 #include "WindowsShellEngine.h"
+#include "LibArchiveEngine.h"
 #include "../Utils/Logger.h"
 #include <filesystem>
 #include <algorithm>
@@ -38,6 +39,7 @@ std::unique_ptr<IExtractionEngine> EngineFactory::CreateEngine(const std::wstrin
     switch (format)
     {
     case ArchiveFormat::ZIP:
+        // Use Windows Shell for ZIP (faster, no dependencies)
         return std::make_unique<WindowsShellEngine>();
         
     case ArchiveFormat::SevenZ:
@@ -47,9 +49,8 @@ std::unique_ptr<IExtractionEngine> EngineFactory::CreateEngine(const std::wstrin
     case ArchiveFormat::TAR_GZ:
     case ArchiveFormat::TAR_XZ:
     case ArchiveFormat::XZ:
-        // TODO: Implement libarchive engine for these formats
-        LOG_WARNING(L"Format not yet supported: " + archivePath);
-        return nullptr;
+        // Use libarchive for all other formats
+        return std::make_unique<LibArchiveEngine>();
         
     default:
         LOG_ERROR(L"Unknown archive format: " + archivePath);
