@@ -1,57 +1,31 @@
-```cpp
 #pragma once
-#include "pch.h"
 #include "../Core/ArchiveInfo.h"
 #include "../Core/ExtractionOptions.h"
 #include "../Core/ExtractionProgress.h"
-#include "../Core/IProgressCallback.h" // Added this include
-#include <memory>
-#include <string> // Added this include
+#include <string>
 
-namespace ZipSpark
+namespace ZipSpark {
+
+// Abstract interface for archive extraction engines
+class IExtractionEngine
 {
-    /// <summary>
-    /// Abstract interface for archive extraction engines
-    /// Implementations handle specific archive formats or use different libraries
-    /// </summary>
-    class IExtractionEngine
-    {
-    public:
-        virtual ~IExtractionEngine() = default;
+public:
+    virtual ~IExtractionEngine() = default;
 
-        /// <summary>
-        /// Check if this engine can handle the specified archive
-        /// </summary>
-        /// <param name="archivePath">Full path to the archive file</param>
-        /// <returns>True if this engine supports the archive format</returns>
-        virtual bool CanHandle(const std::wstring& archivePath) = 0;
+    // Check if this engine can handle the given archive
+    virtual bool CanHandle(const std::wstring& archivePath) = 0;
 
-        /// <summary>
-        /// Get detailed information about an archive without extracting
-        /// </summary>
-        /// <param name="archivePath">Full path to the archive file</param>
-        /// <returns>Archive metadata and information</returns>
-        virtual Core::ArchiveInfo GetArchiveInfo(const std::wstring& archivePath) = 0;
+    // Get information about the archive
+    virtual ArchiveInfo GetArchiveInfo(const std::wstring& archivePath) = 0;
 
-        /// <summary>
-        /// Extract an archive with the specified options
-        /// </summary>
-        /// <param name="info">Archive information (from GetArchiveInfo)</param>
-        /// <param name="options">Extraction configuration</param>
-        /// <param name="callback">Progress callback for UI updates</param>
-        virtual void Extract(
-            const Core::ArchiveInfo& info,
-            const Core::ExtractionOptions& options,
-            Core::IProgressCallback* callback) = 0;
+    // Extract the archive
+    virtual void Extract(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback) = 0;
 
-        /// <summary>
-        /// Cancel an ongoing extraction operation
-        /// </summary>
-        virtual void Cancel() = 0;
+    // Cancel ongoing extraction
+    virtual void Cancel() = 0;
 
-        /// <summary>
-        /// Get the name of this extraction engine
-        /// </summary>
-        virtual std::wstring GetEngineName() const = 0;
-    };
-}
+    // Get engine name for logging
+    virtual std::wstring GetEngineName() const = 0;
+};
+
+} // namespace ZipSpark
