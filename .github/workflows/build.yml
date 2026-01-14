@@ -35,20 +35,23 @@ jobs:
         if ("${{ secrets.CERTIFICATE_BASE64 }}" -ne "") {
           $base64 = "${{ secrets.CERTIFICATE_BASE64 }}"
           $bytes = [System.Convert]::FromBase64String($base64)
-          [System.IO.File]::WriteAllBytes("ZipSpark.pfx", $bytes)
-          Write-Host "Certificate decoded successfully"
+          $certPath = Join-Path $env:GITHUB_WORKSPACE "ZipSpark_TemporaryKey.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, $bytes)
+          Write-Host "Certificate decoded to: $certPath"
+          Write-Host "Certificate file exists: $(Test-Path $certPath)"
         } else {
-          Write-Host "No certificate found in secrets - MSIX will be unsigned"
+          Write-Host "WARNING: No certificate found in secrets - MSIX will be unsigned"
         }
 
     - name: Build project
       run: |
-        $certParams = ""
-        if ((Test-Path "ZipSpark.pfx") -and "${{ matrix.configuration }}" -eq "Release") {
-          $certParams = "/p:PackageCertificateKeyFile=ZipSpark.pfx /p:PackageCertificatePassword=${{ secrets.CERTIFICATE_PASSWORD }}"
-          Write-Host "Building with certificate signing"
+        if ("${{ matrix.configuration }}" -eq "Release" -and (Test-Path "ZipSpark_TemporaryKey.pfx")) {
+          Write-Host "Building with certificate signing..."
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /m /v:minimal
+        } else {
+          Write-Host "Building without certificate signing..."
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /m /v:minimal
         }
-        msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true $certParams /m /v:minimal
 
     - name: Upload MSIX package
       if: matrix.configuration == 'Release'
