@@ -34,16 +34,6 @@ namespace winrt::ZipSpark_New::implementation
         
         // Set window size
         this->AppWindow().Resize({ 720, 600 });
-        
-        // Try to set up Mica backdrop (may fail on some systems)
-        try
-        {
-            SetupMicaBackdrop();
-        }
-        catch (...)
-        {
-            // Ignore Mica errors - window will still work with solid background
-        }
     }
 
     MainWindow::MainWindow(winrt::hstring archivePath) : MainWindow()

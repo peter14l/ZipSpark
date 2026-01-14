@@ -217,6 +217,12 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
         vItems.vt = VT_DISPATCH;
         vItems.pdispVal = pItems;
         
+        // Notify start of extraction
+        if (callback)
+        {
+            callback->OnStart(info.fileCount);
+        }
+        
         // Perform the copy (extraction) - this is ASYNCHRONOUS
         hr = pDestFolder->CopyHere(vItems, vOptions);
         
@@ -226,6 +232,12 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
             int lastProgress = 0;
             int stableCount = 0;
             uintmax_t lastSize = 0;
+            
+            // Report initial progress
+            if (callback)
+            {
+                callback->OnProgress(1, 0, info.totalSize);
+            }
             
             while (!m_cancelled && !extractionComplete)
             {
@@ -247,7 +259,13 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
                     int progress = info.totalSize > 0 ? 
                         static_cast<int>((extractedSize * 100) / info.totalSize) : 0;
                     
-                    if (progress > lastProgress && callback)
+                    // Ensure progress is at least 1% if extraction started
+                    if (progress == 0 && extractedSize > 0)
+                    {
+                        progress = 1;
+                    }
+                    
+                    if (progress != lastProgress && callback)
                     {
                         callback->OnProgress(progress, extractedSize, info.totalSize);
                         lastProgress = progress;
