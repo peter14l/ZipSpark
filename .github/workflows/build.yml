@@ -30,7 +30,14 @@ jobs:
       run: nuget restore packages.config -PackagesDirectory packages
 
     - name: Build project
-      run: msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /m /v:minimal
+      run: msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /m /v:minimal
+
+    - name: Upload MSIX package
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ZipSpark-MSIX-${{ matrix.platform }}
+        path: AppPackages/**/*.msix
 
     - name: Upload build artifacts
       if: matrix.configuration == 'Release'
