@@ -217,23 +217,30 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
         vItems.vt = VT_DISPATCH;
         vItems.pdispVal = pItems;
         
-        // Perform the copy (extraction)
+        // Perform the copy (extraction) - this is ASYNCHRONOUS
         hr = pDestFolder->CopyHere(vItems, vOptions);
         
         // Monitor progress by checking destination folder
-        std::thread progressThread([this, callback, destination, info]() {
+        std::atomic<bool> extractionComplete{false};
+        std::thread progressThread([this, callback, destination, info, &extractionComplete]() {
             int lastProgress = 0;
-            while (!m_cancelled)
+            int stableCount = 0;
+            uintmax_t lastSize = 0;
+            
+            while (!m_cancelled && !extractionComplete)
             {
                 try
                 {
                     // Calculate progress based on destination folder size
                     uintmax_t extractedSize = 0;
-                    for (const auto& entry : fs::recursive_directory_iterator(destination))
+                    if (fs::exists(destination))
                     {
-                        if (fs::is_regular_file(entry))
+                        for (const auto& entry : fs::recursive_directory_iterator(destination))
                         {
-                            extractedSize += fs::file_size(entry);
+                            if (fs::is_regular_file(entry))
+                            {
+                                extractedSize += fs::file_size(entry);
+                            }
                         }
                     }
                     
@@ -246,19 +253,33 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
                         lastProgress = progress;
                     }
                     
-                    if (progress >= 100)
-                        break;
+                    // Check if extraction is complete (size hasn't changed for 3 iterations)
+                    if (extractedSize == lastSize)
+                    {
+                        stableCount++;
+                        if (stableCount >= 3 && extractedSize > 0)
+                        {
+                            extractionComplete = true;
+                            if (callback)
+                            {
+                                callback->OnProgress(100, extractedSize, extractedSize);
+                            }
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        stableCount = 0;
+                        lastSize = extractedSize;
+                    }
                 }
                 catch (...) {}
                 
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
             }
         });
         
-        // Wait for extraction to complete (Shell API is synchronous)
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        
-        // Cleanup
+        // Wait for extraction to complete
         progressThread.join();
         pItems->Release();
         pDestFolder->Release();
