@@ -106,7 +106,8 @@ std::wstring LibArchiveEngine::DetermineDestination(const ArchiveInfo& info, con
         std::wstring folderName = archivePath.stem().wstring();
         
         // Handle .tar.gz and .tar.xz (double extension)
-        if (folderName.ends_with(L".tar"))
+        if (folderName.length() >= 4 && 
+            folderName.substr(folderName.length() - 4) == L".tar")
         {
             folderName = folderName.substr(0, folderName.length() - 4);
         }
