@@ -11,14 +11,14 @@ namespace ZipSpark
     enum class ArchiveFormat
     {
         Unknown,
-        Zip,
-        SevenZip,
-        Rar,
-        Tar,
-        Gzip,
-        TarGz,
-        TarXz,
-        Xz
+        ZIP,
+        SevenZ,
+        RAR,
+        TAR,
+        GZ,
+        TAR_GZ,
+        TAR_XZ,
+        XZ
     };
 
     /// <summary>
@@ -74,14 +74,14 @@ namespace ZipSpark
         {
             switch (format)
             {
-            case ArchiveFormat::Zip: return L"ZIP";
-            case ArchiveFormat::SevenZip: return L"7z";
-            case ArchiveFormat::Rar: return L"RAR";
-            case ArchiveFormat::Tar: return L"TAR";
-            case ArchiveFormat::Gzip: return L"GZ";
-            case ArchiveFormat::TarGz: return L"TAR.GZ";
-            case ArchiveFormat::TarXz: return L"TAR.XZ";
-            case ArchiveFormat::Xz: return L"XZ";
+            case ArchiveFormat::ZIP: return L"ZIP";
+            case ArchiveFormat::SevenZ: return L"7z";
+            case ArchiveFormat::RAR: return L"RAR";
+            case ArchiveFormat::TAR: return L"TAR";
+            case ArchiveFormat::GZ: return L"GZ";
+            case ArchiveFormat::TAR_GZ: return L"TAR.GZ";
+            case ArchiveFormat::TAR_XZ: return L"TAR.XZ";
+            case ArchiveFormat::XZ: return L"XZ";
             default: return L"Unknown";
             }
         }

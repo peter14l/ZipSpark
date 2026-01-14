@@ -6,6 +6,43 @@
 
 namespace ZipSpark
 {
+    // Forward declaration
+    enum class ErrorCode;
+
+    /// <summary>
+    /// Callback interface for progress updates during extraction
+    /// </summary>
+    class IProgressCallback
+    {
+    public:
+        virtual ~IProgressCallback() = default;
+
+        /// <summary>
+        /// Called when extraction starts
+        /// </summary>
+        virtual void OnStart(int totalFiles) = 0;
+
+        /// <summary>
+        /// Called when overall progress is updated
+        /// </summary>
+        virtual void OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes) = 0;
+
+        /// <summary>
+        /// Called when file-level progress is updated
+        /// </summary>
+        virtual void OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles) = 0;
+
+        /// <summary>
+        /// Called when extraction completes successfully
+        /// </summary>
+        virtual void OnComplete(const std::wstring& destination) = 0;
+
+        /// <summary>
+        /// Called when extraction fails
+        /// </summary>
+        virtual void OnError(ErrorCode errorCode, const std::wstring& errorMessage) = 0;
+    };
+
     /// <summary>
     /// Progress tracking for archive extraction operations
     /// </summary>
@@ -108,29 +145,5 @@ namespace ZipSpark
             uint64_t remainingMinutes = minutes % 60;
             return std::to_wstring(hours) + L"h " + std::to_wstring(remainingMinutes) + L"m";
         }
-    };
-
-    /// <summary>
-    /// Callback interface for progress updates
-    /// </summary>
-    class IProgressCallback
-    {
-    public:
-        virtual ~IProgressCallback() = default;
-
-        /// <summary>
-        /// Called when progress is updated
-        /// </summary>
-        virtual void OnProgressUpdate(const ExtractionProgress& progress) = 0;
-
-        /// <summary>
-        /// Called when extraction completes successfully
-        /// </summary>
-        virtual void OnComplete() = 0;
-
-        /// <summary>
-        /// Called when extraction fails
-        /// </summary>
-        virtual void OnError(const std::wstring& errorMessage) = 0;
     };
 }

@@ -84,7 +84,9 @@ namespace winrt::ZipSpark_New::implementation
         
         // Initialize with window handle
         auto initializeWithWindow = picker.as<::IInitializeWithWindow>();
-        HWND hwnd = GetWindowFromWindowId(this->AppWindow().Id());
+        auto windowNative = this->try_as<::IWindowNative>();
+        HWND hwnd;
+        windowNative->get_WindowHandle(&hwnd);
         initializeWithWindow->Initialize(hwnd);
         
         // Set file type filters

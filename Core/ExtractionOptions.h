@@ -27,6 +27,11 @@ namespace ZipSpark
         std::wstring destinationPath;
 
         /// <summary>
+        /// Whether to create a subfolder for extraction
+        /// </summary>
+        bool createSubfolder = true;
+
+        /// <summary>
         /// Password for encrypted archives (if needed)
         /// </summary>
         std::optional<std::wstring> password;

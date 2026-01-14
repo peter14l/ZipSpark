@@ -2,6 +2,7 @@
 #include "../Core/ArchiveInfo.h"
 #include "../Core/ExtractionOptions.h"
 #include "../Core/ExtractionProgress.h"
+#include "../Utils/ErrorHandler.h"
 #include <string>
 
 namespace ZipSpark {
