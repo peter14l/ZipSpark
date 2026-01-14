@@ -9,6 +9,7 @@ obj/
 *.suo
 *.cache
 *.log
+*.pfx
 
 # Generated files
 Generated Files/
