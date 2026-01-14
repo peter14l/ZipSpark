@@ -416,12 +416,12 @@ namespace winrt::ZipSpark_New::implementation
         content.Children().Append(intlHeader);
         
         Controls::HyperlinkButton paypalLink;
-        paypalLink.Content(winrt::box_value(L"💳 Donate via PayPal"));
+        paypalLink.Content(winrt::box_value(L"Donate via PayPal"));
         paypalLink.NavigateUri(winrt::Windows::Foundation::Uri(L"https://paypal.me/yourpaypal"));
         content.Children().Append(paypalLink);
         
         Controls::HyperlinkButton kofiLink;
-        kofiLink.Content(winrt::box_value(L"☕ Buy Me a Coffee"));
+        kofiLink.Content(winrt::box_value(L"Buy Me a Coffee"));
         kofiLink.NavigateUri(winrt::Windows::Foundation::Uri(L"https://ko-fi.com/yourname"));
         content.Children().Append(kofiLink);
         
@@ -461,7 +461,7 @@ namespace winrt::ZipSpark_New::implementation
         
         // GitHub link
         Controls::HyperlinkButton githubLink;
-        githubLink.Content(winrt::box_value(L"🔗 View on GitHub"));
+        githubLink.Content(winrt::box_value(L"View on GitHub"));
         githubLink.NavigateUri(winrt::Windows::Foundation::Uri(L"https://github.com/peter14l/ZipSpark"));
         githubLink.Margin({ 0, 8, 0, 0 });
         content.Children().Append(githubLink);
