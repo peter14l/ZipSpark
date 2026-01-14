@@ -3,6 +3,7 @@
 #if __has_include("MainWindow.g.cpp")
 #include "MainWindow.g.cpp"
 #endif
+#include "PreferencesWindow.xaml.h"
 
 #include "Engine/EngineFactory.h"
 #include "Core/ArchiveInfo.h"
