@@ -16,27 +16,20 @@ namespace winrt::ZipSpark_New::implementation
     {
         InitializeComponent();
         
-        // Set up Mica backdrop
-        SetupMicaBackdrop();
+        // Set window title
+        this->Title(L"ZipSpark");
         
         // Set window size
         this->AppWindow().Resize({ 720, 600 });
         
-        // Center window on screen
-        auto displayArea = Microsoft::UI::Windowing::DisplayArea::GetFromWindowId(
-            this->AppWindow().Id(),
-            Microsoft::UI::Windowing::DisplayAreaFallback::Nearest
-        );
-        
-        if (displayArea)
+        // Try to set up Mica backdrop (may fail on some systems)
+        try
         {
-            auto workArea = displayArea.WorkArea();
-            auto windowSize = this->AppWindow().Size();
-            
-            int32_t x = (workArea.Width - windowSize.Width) / 2 + workArea.X;
-            int32_t y = (workArea.Height - windowSize.Height) / 2 + workArea.Y;
-            
-            this->AppWindow().Move({ x, y });
+            SetupMicaBackdrop();
+        }
+        catch (...)
+        {
+            // Ignore Mica errors - window will still work with solid background
         }
     }
 
