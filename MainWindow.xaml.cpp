@@ -197,8 +197,9 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::PreferencesButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
-        // TODO: Open PreferencesWindow in Phase 3
-        StatusText().Text(L"Preferences window coming soon...");
+        // Create and show preferences window
+        auto prefsWindow = winrt::make<PreferencesWindow>();
+        prefsWindow.Activate();
     }
 
     void MainWindow::ShowExtractionProgress()
