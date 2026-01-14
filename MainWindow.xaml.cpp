@@ -13,6 +13,8 @@
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Windows.Storage.Pickers.h>
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Windows.Storage.h>
 #include <microsoft.ui.xaml.window.h>
 #include <Shobjidl.h>
 #include <thread>
