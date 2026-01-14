@@ -29,8 +29,26 @@ jobs:
     - name: Restore NuGet packages
       run: nuget restore packages.config -PackagesDirectory packages
 
+    - name: Decode certificate
+      if: matrix.configuration == 'Release' && github.event_name != 'pull_request'
+      run: |
+        if ("${{ secrets.CERTIFICATE_BASE64 }}" -ne "") {
+          $base64 = "${{ secrets.CERTIFICATE_BASE64 }}"
+          $bytes = [System.Convert]::FromBase64String($base64)
+          [System.IO.File]::WriteAllBytes("ZipSpark.pfx", $bytes)
+          Write-Host "Certificate decoded successfully"
+        } else {
+          Write-Host "No certificate found in secrets - MSIX will be unsigned"
+        }
+
     - name: Build project
-      run: msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /m /v:minimal
+      run: |
+        $certParams = ""
+        if ((Test-Path "ZipSpark.pfx") -and "${{ matrix.configuration }}" -eq "Release") {
+          $certParams = "/p:PackageCertificateKeyFile=ZipSpark.pfx /p:PackageCertificatePassword=${{ secrets.CERTIFICATE_PASSWORD }}"
+          Write-Host "Building with certificate signing"
+        }
+        msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true $certParams /m /v:minimal
 
     - name: Upload MSIX package
       if: matrix.configuration == 'Release'

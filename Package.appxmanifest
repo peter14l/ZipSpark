@@ -9,7 +9,7 @@
 
   <Identity
     Name="8b8d2ade-6cf4-482b-8497-bc4ad96ff63d"
-    Publisher="CN=peter"
+    Publisher="CN=ZipSpark Development"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="8b8d2ade-6cf4-482b-8497-bc4ad96ff63d" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
