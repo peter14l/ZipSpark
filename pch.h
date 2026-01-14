@@ -24,6 +24,7 @@
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Composition.SystemBackdrops.h>
 #include <winrt/Microsoft.UI.Windowing.h>
+#include <winrt/Windows.Storage.Pickers.h>
 #include <wil/cppwinrt_helpers.h>
 
 // Standard library includes

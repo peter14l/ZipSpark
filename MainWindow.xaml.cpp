@@ -10,10 +10,15 @@
 #include "Utils/Logger.h"
 #include <winrt/Microsoft.UI.Composition.SystemBackdrops.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
+#include <winrt/Microsoft.UI.Xaml.Controls.h>
+#include <winrt/Windows.Storage.Pickers.h>
+#include <microsoft.ui.xaml.window.h>
+#include <Shobjidl.h>
 #include <thread>
 
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
+using namespace Microsoft::UI::Xaml::Controls;
 
 namespace winrt::ZipSpark_New::implementation
 {
@@ -74,9 +79,46 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::ExtractButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
-        // TODO: Show file picker to select archive
-        // For now, use a test file
-        StartExtraction(L"C:\\test.zip");
+        // Show file picker to select archive
+        auto picker = winrt::Windows::Storage::Pickers::FileOpenPicker();
+        
+        // Initialize with window handle
+        auto initializeWithWindow = picker.as<::IInitializeWithWindow>();
+        HWND hwnd = GetWindowFromWindowId(this->AppWindow().Id());
+        initializeWithWindow->Initialize(hwnd);
+        
+        // Set file type filters
+        picker.FileTypeFilter().Append(L".zip");
+        picker.FileTypeFilter().Append(L".7z");
+        picker.FileTypeFilter().Append(L".rar");
+        picker.FileTypeFilter().Append(L".tar");
+        picker.FileTypeFilter().Append(L".gz");
+        picker.FileTypeFilter().Append(L".tgz");
+        picker.FileTypeFilter().Append(L".txz");
+        picker.FileTypeFilter().Append(L".xz");
+        
+        picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::Downloads);
+        
+        // Show picker
+        auto file = picker.PickSingleFileAsync().get();
+        if (file)
+        {
+            StartExtraction(file.Path().c_str());
+        }
+    }
+
+    void MainWindow::ShowErrorDialog(const std::wstring& title, const std::wstring& message)
+    {
+        DispatcherQueue().TryEnqueue([this, title, message]() {
+            Controls::ContentDialog dialog;
+            dialog.XamlRoot(this->Content().XamlRoot());
+            dialog.Title(winrt::box_value(winrt::hstring(title)));
+            dialog.Content(winrt::box_value(winrt::hstring(message)));
+            dialog.CloseButtonText(L"OK");
+            dialog.DefaultButton(Controls::ContentDialogButton::Close);
+            
+            dialog.ShowAsync();
+        });
     }
 
     void MainWindow::StartExtraction(const std::wstring& archivePath)
@@ -247,11 +289,35 @@ namespace winrt::ZipSpark_New::implementation
     {
         LOG_ERROR(L"Extraction error: " + message);
         
-        DispatcherQueue().TryEnqueue([this, message]() {
-            StatusText().Text(winrt::hstring(L"Error: " + message));
+        std::wstring title = L"Extraction Error";
+        std::wstring fullMessage = message;
+        
+        // Add user-friendly context based on error code
+        switch (errorCode)
+        {
+        case ZipSpark::ErrorCode::ArchiveNotFound:
+            fullMessage = L"The archive file could not be found.\n\n" + message;
+            break;
+        case ZipSpark::ErrorCode::UnsupportedFormat:
+            fullMessage = L"This archive format is not yet supported.\n\nCurrently supported: ZIP files only.\n\nComing soon: 7z, RAR, TAR, GZ, XZ";
+            break;
+        case ZipSpark::ErrorCode::ExtractionFailed:
+            fullMessage = L"Failed to extract the archive.\n\n" + message;
+            break;
+        case ZipSpark::ErrorCode::InsufficientSpace:
+            fullMessage = L"Not enough disk space to extract the archive.";
+            break;
+        case ZipSpark::ErrorCode::AccessDenied:
+            fullMessage = L"Access denied. Check file permissions.";
+            break;
+        default:
+            break;
+        }
+        
+        ShowErrorDialog(title, fullMessage);
+        
+        DispatcherQueue().TryEnqueue([this]() {
             HideExtractionProgress();
-            
-            // TODO: Show error dialog
         });
     }
 }

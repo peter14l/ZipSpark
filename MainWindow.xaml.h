@@ -29,6 +29,7 @@ namespace winrt::ZipSpark_New::implementation
         void HideExtractionProgress();
         void StartExtraction(const std::wstring& archivePath);
         void UpdateProgressUI(int percent, uint64_t bytesProcessed, uint64_t totalBytes);
+        void ShowErrorDialog(const std::wstring& title, const std::wstring& message);
         
         std::wstring m_archivePath;
         std::unique_ptr<ZipSpark::IExtractionEngine> m_engine;
