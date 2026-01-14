@@ -13,12 +13,30 @@ WinUI 3 apps **cannot** be run by double-clicking the `.exe` file directly. They
    - This will build, deploy, and run the app
 5. The app will appear in your Start Menu as "ZipSpark"
 
-## Option 2: Deploy from GitHub Actions Artifacts
+## Option 2: Deploy from GitHub Actions Artifacts (Easiest for Testing)
 
-1. Download the build artifacts from GitHub Actions
-2. Extract the MSIX package
-3. Right-click the `.msix` file → **Install**
-4. Find "ZipSpark" in your Start Menu
+1. **Download the artifact** from GitHub Actions:
+   - Go to https://github.com/peter14l/ZipSpark/actions
+   - Click on the latest successful workflow run
+   - Scroll down to "Artifacts"
+   - Download `ZipSpark-x64-Release.zip`
+
+2. **Extract the ZIP file** to a folder (e.g., `C:\Temp\ZipSpark`)
+
+3. **Deploy using PowerShell**:
+   ```powershell
+   # Navigate to the extracted folder
+   cd "C:\Temp\ZipSpark\ZipSpark-x64-Release"
+   
+   # Deploy the MSIX package
+   Add-AppxPackage -Register AppxManifest.xml
+   ```
+
+4. **Launch the app**:
+   - Search for "ZipSpark" in Windows Start Menu
+   - Or run: `explorer.exe shell:AppsFolder\$(Get-AppxPackage | Where-Object {$_.Name -like "*ZipSpark*"} | Select-Object -ExpandProperty PackageFamilyName)!App`
+
+> **Note**: The downloaded ZIP contains the MSIX package files, not a standalone EXE. You must use `Add-AppxPackage` to deploy it.
 
 ## Option 3: Manual MSIX Deployment (PowerShell)
 
