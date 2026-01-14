@@ -27,10 +27,10 @@ jobs:
       uses: NuGet/setup-nuget@v2
 
     - name: Restore NuGet packages
-      run: nuget restore ZipSpark-New.sln
+      run: nuget restore packages.config -PackagesDirectory packages
 
-    - name: Build solution
-      run: msbuild ZipSpark-New.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /m
+    - name: Build project
+      run: msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /m /v:minimal
 
     - name: Upload build artifacts
       if: matrix.configuration == 'Release'
@@ -38,7 +38,7 @@ jobs:
       with:
         name: ZipSpark-${{ matrix.platform }}-${{ matrix.configuration }}
         path: |
-          x64/${{ matrix.configuration }}/ZipSpark-New/**/*
-          !x64/${{ matrix.configuration }}/**/*.pdb
-          !x64/${{ matrix.configuration }}/**/*.ipdb
-          !x64/${{ matrix.configuration }}/**/*.iobj
+          ${{ matrix.platform }}/${{ matrix.configuration }}/ZipSpark-New/**/*
+          !${{ matrix.platform }}/${{ matrix.configuration }}/**/*.pdb
+          !${{ matrix.platform }}/${{ matrix.configuration }}/**/*.ipdb
+          !${{ matrix.platform }}/${{ matrix.configuration }}/**/*.iobj
