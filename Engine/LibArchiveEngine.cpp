@@ -4,6 +4,8 @@
 #include "../Utils/ErrorHandler.h"
 #include <filesystem>
 #include <fstream>
+#include <archive.h>
+#include <archive_entry.h>
 
 namespace fs = std::filesystem;
 
@@ -137,17 +139,114 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         
         LOG_INFO(L"Extracting to: " + destination);
         
-        if (callback) callback->OnStart(info.fileCount);
-        
-        // TODO: Implement actual libarchive extraction
-        // For now, show error that libarchive is not yet integrated
-        if (callback)
+        // Convert archive path to UTF-8
+        std::string archivePathUtf8;
+        int size = WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (size > 0)
         {
-            callback->OnError(ErrorCode::UnsupportedFormat, 
-                L"libarchive integration in progress. Currently only ZIP files are supported.");
+            archivePathUtf8.resize(size);
+            WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, &archivePathUtf8[0], size, nullptr, nullptr);
         }
         
-        LOG_WARNING(L"libarchive not yet integrated - extraction failed");
+        // Open archive
+        struct archive *a = archive_read_new();
+        archive_read_support_filter_all(a);
+        archive_read_support_format_all(a);
+        
+        int r = archive_read_open_filename(a, archivePathUtf8.c_str(), 10240);
+        if (r != ARCHIVE_OK)
+        {
+            archive_read_free(a);
+            if (callback) callback->OnError(ErrorCode::ArchiveNotFound, L"Failed to open archive");
+            return;
+        }
+        
+        if (callback) callback->OnStart(info.fileCount);
+        
+        // Extract files
+        struct archive_entry *entry;
+        int fileIndex = 0;
+        uint64_t totalExtracted = 0;
+        
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK && !m_cancelled)
+        {
+            // Get entry path and convert to wide string
+            const char* entryPath = archive_entry_pathname(entry);
+            int wsize = MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, nullptr, 0);
+            std::wstring entryPathW;
+            if (wsize > 0)
+            {
+                entryPathW.resize(wsize);
+                MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, &entryPathW[0], wsize);
+            }
+            
+            // Build full destination path
+            fs::path fullPath = destPath / entryPathW;
+            
+            // Report file progress
+            if (callback)
+            {
+                callback->OnFileProgress(entryPathW, fileIndex, info.fileCount);
+            }
+            
+            // Create directories
+            if (archive_entry_filetype(entry) == AE_IFDIR)
+            {
+                fs::create_directories(fullPath);
+            }
+            else
+            {
+                // Create parent directory
+                fs::create_directories(fullPath.parent_path());
+                
+                // Extract file
+                std::ofstream outFile(fullPath, std::ios::binary);
+                if (!outFile)
+                {
+                    LOG_ERROR(L"Failed to create file: " + fullPath.wstring());
+                    continue;
+                }
+                
+                const void* buff;
+                size_t size;
+                int64_t offset;
+                
+                while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK)
+                {
+                    outFile.write(static_cast<const char*>(buff), size);
+                    totalExtracted += size;
+                    
+                    // Update progress
+                    int progress = info.totalSize > 0 ? 
+                        static_cast<int>((totalExtracted * 100) / info.totalSize) : 0;
+                    
+                    if (callback)
+                    {
+                        callback->OnProgress(progress, totalExtracted, info.totalSize);
+                    }
+                }
+                
+                outFile.close();
+            }
+            
+            fileIndex++;
+        }
+        
+        archive_read_free(a);
+        
+        if (m_cancelled)
+        {
+            LOG_INFO(L"Extraction cancelled");
+            return;
+        }
+        
+        if (callback)
+        {
+            callback->OnProgress(100, info.totalSize, info.totalSize);
+            callback->OnComplete(destination);
+        }
+        
+        LOG_INFO(L"Extraction completed successfully");
     }
     catch (const std::exception& e)
     {
