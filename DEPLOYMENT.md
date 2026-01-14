@@ -1,5 +1,23 @@
 # Running ZipSpark
 
+## Prerequisites
+
+**Install Windows App Runtime 1.8** (required for WinUI 3 apps):
+
+1. Download the installer from Microsoft:
+   - https://aka.ms/windowsappsdk/1.8/latest/windowsappruntimeinstall-x64.exe
+
+2. Run the installer (double-click the downloaded `.exe`)
+
+3. Verify installation:
+   ```powershell
+   Get-AppxPackage | Where-Object {$_.Name -like "*WindowsAppRuntime*"}
+   ```
+
+> **Note**: You only need to install this once per machine. After installation, all WinUI 3 apps will work.
+
+---
+
 ## Important: WinUI 3 Deployment
 
 WinUI 3 apps **cannot** be run by double-clicking the `.exe` file directly. They must be deployed as MSIX packages.
