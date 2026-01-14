@@ -7,9 +7,179 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="ZipSpark-New">
+    Title="ZipSpark">
 
     <Grid>
+        <!-- Mica Backdrop -->
+        <Grid.Background>
+            <SolidColorBrush Color="Transparent"/>
+        </Grid.Background>
 
+        <Grid Padding="40,32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header Section -->
+            <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,32">
+                <TextBlock 
+                    Text="ZipSpark" 
+                    Style="{StaticResource TitleTextBlockStyle}"
+                    Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock 
+                    Text="Fast archive extraction utility" 
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+
+            <!-- Main Content Area -->
+            <Grid Grid.Row="1" VerticalAlignment="Center">
+                <StackPanel Spacing="24" MaxWidth="600">
+                    
+                    <!-- Archive Info Card -->
+                    <Border 
+                        Background="{StaticResource DarkSurfaceBrush}"
+                        CornerRadius="8"
+                        Padding="24"
+                        BorderBrush="{StaticResource PrimaryBlueBrush}"
+                        BorderThickness="1">
+                        <StackPanel Spacing="12">
+                            <TextBlock 
+                                Text="Ready to Extract"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock 
+                                x:Name="ArchivePathText"
+                                Text="Drop an archive or use file associations"
+                                Style="{StaticResource BodyTextBlockStyle}"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                TextWrapping="Wrap"/>
+                            <TextBlock 
+                                x:Name="ArchiveInfoText"
+                                Text=""
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Progress Section -->
+                    <StackPanel x:Name="ProgressSection" Spacing="16" Visibility="Collapsed">
+                        <!-- Overall Progress -->
+                        <StackPanel Spacing="8">
+                            <Grid>
+                                <TextBlock 
+                                    Text="Overall Progress"
+                                    Style="{StaticResource BodyTextBlockStyle}"
+                                    Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock 
+                                    x:Name="OverallProgressText"
+                                    Text="0%"
+                                    Style="{StaticResource BodyTextBlockStyle}"
+                                    Foreground="{StaticResource AccentGreenBrush}"
+                                    HorizontalAlignment="Right"/>
+                            </Grid>
+                            <ProgressBar 
+                                x:Name="OverallProgressBar"
+                                Height="8"
+                                Foreground="{StaticResource AccentGreenBrush}"
+                                Background="{StaticResource DarkElevatedBrush}"
+                                CornerRadius="4"
+                                Minimum="0"
+                                Maximum="100"
+                                Value="0"/>
+                        </StackPanel>
+
+                        <!-- Current File Progress -->
+                        <StackPanel Spacing="8">
+                            <Grid>
+                                <TextBlock 
+                                    x:Name="CurrentFileText"
+                                    Text="Extracting..."
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    TextTrimming="CharacterEllipsis"/>
+                                <TextBlock 
+                                    x:Name="SpeedText"
+                                    Text="0 MB/s"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    HorizontalAlignment="Right"/>
+                            </Grid>
+                            <ProgressBar 
+                                x:Name="FileProgressBar"
+                                Height="4"
+                                Foreground="{StaticResource PrimaryBlueBrush}"
+                                Background="{StaticResource DarkElevatedBrush}"
+                                CornerRadius="2"
+                                Minimum="0"
+                                Maximum="100"
+                                Value="0"
+                                IsIndeterminate="True"/>
+                        </StackPanel>
+
+                        <!-- Status Text -->
+                        <TextBlock 
+                            x:Name="StatusText"
+                            Text="Preparing extraction..."
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Action Buttons -->
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button 
+                            x:Name="ExtractButton"
+                            Grid.Column="0"
+                            Content="Extract Archive"
+                            HorizontalAlignment="Stretch"
+                            Height="48"
+                            Background="{StaticResource PrimaryBlueBrush}"
+                            Foreground="White"
+                            CornerRadius="8"
+                            FontWeight="SemiBold"
+                            Click="ExtractButton_Click"/>
+
+                        <Button 
+                            x:Name="CancelButton"
+                            Grid.Column="1"
+                            Content="Cancel"
+                            HorizontalAlignment="Stretch"
+                            Height="48"
+                            Background="{StaticResource DarkSurfaceBrush}"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            BorderBrush="{StaticResource TextDisabledBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="Collapsed"
+                            Click="CancelButton_Click"/>
+                    </Grid>
+
+                </StackPanel>
+            </Grid>
+
+            <!-- Footer Section -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center" Margin="0,32,0,0">
+                <HyperlinkButton 
+                    Content="Preferences"
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Click="PreferencesButton_Click"/>
+                <TextBlock 
+                    Text="•" 
+                    Foreground="{StaticResource TextDisabledBrush}"
+                    VerticalAlignment="Center"/>
+                <HyperlinkButton 
+                    Content="About"
+                    Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
