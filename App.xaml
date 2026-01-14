@@ -8,9 +8,21 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- ZipSpark Dark Theme (default) -->
-                <ResourceDictionary Source="Resources/Themes/DarkTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Inline theme colors to avoid external XAML file issues -->
+            <SolidColorBrush x:Key="PrimaryBlueBrush" Color="#2565EB"/>
+            <SolidColorBrush x:Key="AccentGreenBrush" Color="#22C55E"/>
+            <SolidColorBrush x:Key="ErrorRedBrush" Color="#EF4444"/>
+            <SolidColorBrush x:Key="WarningAmberBrush" Color="#F59E0B"/>
+            
+            <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#051671"/>
+            <SolidColorBrush x:Key="DarkSurfaceBrush" Color="#0A1F8A"/>
+            <SolidColorBrush x:Key="DarkElevatedBrush" Color="#1028A3"/>
+            
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3C5FF"/>
+            <SolidColorBrush x:Key="TextDisabledBrush" Color="#6B7DB8"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
