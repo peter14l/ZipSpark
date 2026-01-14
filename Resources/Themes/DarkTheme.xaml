@@ -1,0 +1,45 @@
+&lt;ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"&gt;
+
+    &lt;!-- ZipSpark Dark Theme - Based on Phanvi's Color Scheme --&gt;
+    
+    &lt;!-- Primary Colors --&gt;
+    &lt;Color x:Key="PrimaryBlue"&gt;#2565EB&lt;/Color&gt;
+    &lt;Color x:Key="AccentGreen"&gt;#22C55E&lt;/Color&gt;
+    &lt;Color x:Key="ErrorRed"&gt;#EF4444&lt;/Color&gt;
+    &lt;Color x:Key="WarningAmber"&gt;#F59E0B&lt;/Color&gt;
+    
+    &lt;!-- Background Colors --&gt;
+    &lt;Color x:Key="DarkBackground"&gt;#051671&lt;/Color&gt;
+    &lt;Color x:Key="DarkSurface"&gt;#0A1F8A&lt;/Color&gt;
+    &lt;Color x:Key="DarkElevated"&gt;#1028A3&lt;/Color&gt;
+    
+    &lt;!-- Text Colors --&gt;
+    &lt;Color x:Key="TextPrimary"&gt;#FFFFFF&lt;/Color&gt;
+    &lt;Color x:Key="TextSecondary"&gt;#B3C5FF&lt;/Color&gt;
+    &lt;Color x:Key="TextDisabled"&gt;#6B7DB8&lt;/Color&gt;
+    
+    &lt;!-- Brushes --&gt;
+    &lt;SolidColorBrush x:Key="PrimaryBlueBrush" Color="{StaticResource PrimaryBlue}"/&gt;
+    &lt;SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreen}"/&gt;
+    &lt;SolidColorBrush x:Key="ErrorRedBrush" Color="{StaticResource ErrorRed}"/&gt;
+    &lt;SolidColorBrush x:Key="WarningAmberBrush" Color="{StaticResource WarningAmber}"/&gt;
+    
+    &lt;SolidColorBrush x:Key="DarkBackgroundBrush" Color="{StaticResource DarkBackground}"/&gt;
+    &lt;SolidColorBrush x:Key="DarkSurfaceBrush" Color="{StaticResource DarkSurface}"/&gt;
+    &lt;SolidColorBrush x:Key="DarkElevatedBrush" Color="{StaticResource DarkElevated}"/&gt;
+    
+    &lt;SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/&gt;
+    &lt;SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/&gt;
+    &lt;SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabled}"/&gt;
+    
+    &lt;!-- Override default theme resources --&gt;
+    &lt;SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="{StaticResource DarkBackground}"/&gt;
+    &lt;SolidColorBrush x:Key="SystemAccentColor" Color="{StaticResource PrimaryBlue}"/&gt;
+    &lt;SolidColorBrush x:Key="SystemAccentColorLight1" Color="#3C7BF5"/&gt;
+    &lt;SolidColorBrush x:Key="SystemAccentColorLight2" Color="#5391FF"/&gt;
+    &lt;SolidColorBrush x:Key="SystemAccentColorDark1" Color="#1E52D1"/&gt;
+    &lt;SolidColorBrush x:Key="SystemAccentColorDark2" Color="#1740B7"/&gt;
+
+&lt;/ResourceDictionary&gt;

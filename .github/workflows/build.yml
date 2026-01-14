@@ -1,0 +1,44 @@
+name: Build ZipSpark
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        platform: [x64]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    - name: Restore NuGet packages
+      run: nuget restore ZipSpark-New.sln
+
+    - name: Build solution
+      run: msbuild ZipSpark-New.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /m
+
+    - name: Upload build artifacts
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ZipSpark-${{ matrix.platform }}-${{ matrix.configuration }}
+        path: |
+          x64/${{ matrix.configuration }}/ZipSpark-New/**/*
+          !x64/${{ matrix.configuration }}/**/*.pdb
+          !x64/${{ matrix.configuration }}/**/*.ipdb
+          !x64/${{ matrix.configuration }}/**/*.iobj

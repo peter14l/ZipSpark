@@ -1,0 +1,46 @@
+# Build outputs
+x64/
+x86/
+ARM/
+ARM64/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+
+# Generated files
+Generated Files/
+*.g.h
+*.g.cpp
+*.g.cs
+
+# NuGet
+packages/
+*.nupkg
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.sln.docstates
+
+# Backup files
+*.backup
+*.bak
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin
+$RECYCLE.BIN/
+
+# VS Code
+.vscode/
+
+# JetBrains Rider
+.idea/

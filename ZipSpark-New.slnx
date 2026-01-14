@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ZipSpark-New.vcxproj" Id="5d232a28-b1cd-482a-b73d-b67c61838863">
+    <Deploy />
+  </Project>
+</Solution>
