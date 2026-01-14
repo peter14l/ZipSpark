@@ -272,16 +272,31 @@ namespace winrt::ZipSpark_New::implementation
         LOG_INFO(L"Extraction completed: " + destination);
         
         DispatcherQueue().TryEnqueue([this, destination]() {
+            // Update progress to 100%
             OverallProgressBar().Value(100);
             OverallProgressText().Text(L"100%");
-            StatusText().Text(L"Extraction complete!");
+            FileProgressBar().Value(100);
+            FileProgressBar().IsIndeterminate(false);
             
-            // Hide progress after 2 seconds
+            // Show completion message
+            StatusText().Text(L"Extraction complete!");
+            CurrentFileText().Text(L"All files extracted successfully");
+            
+            // Show success message in a dialog
+            Controls::ContentDialog dialog;
+            dialog.XamlRoot(this->Content().XamlRoot());
+            dialog.Title(winrt::box_value(L"Success"));
+            dialog.Content(winrt::box_value(L"Archive extracted successfully to:\n\n" + winrt::hstring(destination)));
+            dialog.CloseButtonText(L"OK");
+            dialog.DefaultButton(Controls::ContentDialogButton::Close);
+            
+            dialog.ShowAsync();
+            
+            // Reset UI after dialog is shown
             std::thread([this]() {
-                std::this_thread::sleep_for(std::chrono::seconds(2));
+                std::this_thread::sleep_for(std::chrono::seconds(3));
                 DispatcherQueue().TryEnqueue([this]() {
                     HideExtractionProgress();
-                    ArchivePathText().Text(L"Extraction completed successfully");
                 });
             }).detach();
         });
