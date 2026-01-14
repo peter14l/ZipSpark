@@ -126,6 +126,9 @@
     <ClInclude Include="MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="PreferencesWindow.xaml.h">
+      <DependentUpon>PreferencesWindow.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="Core\ArchiveInfo.h" />
     <ClInclude Include="Core\ExtractionOptions.h" />
     <ClInclude Include="Core\ExtractionProgress.h" />
@@ -135,10 +138,12 @@
     <ClInclude Include="Engine\EngineFactory.h" />
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\ErrorHandler.h" />
+    <ClInclude Include="Utils\Settings.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="MainWindow.xaml" />
+    <Page Include="PreferencesWindow.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -153,12 +158,20 @@
     <ClCompile Include="MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="PreferencesWindow.xaml.cpp">
+      <DependentUpon>PreferencesWindow.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Utils\Settings.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="MainWindow.idl">
       <SubType>Code</SubType>
       <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="PreferencesWindow.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>PreferencesWindow.xaml</DependentUpon>
     </Midl>
   </ItemGroup>
   <ItemGroup>

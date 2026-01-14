@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="ZipSpark_New.PreferencesWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Preferences - ZipSpark"
+    Width="600"
+    Height="500">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt"/>
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Padding="24,20,24,16" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel>
+                <TextBlock Text="Preferences" Style="{StaticResource TitleTextBlockStyle}" FontWeight="SemiBold"/>
+                <TextBlock Text="Customize ZipSpark to your liking" 
+                          Style="{StaticResource BodyTextBlockStyle}" 
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          Margin="0,4,0,0"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Settings Content -->
+        <ScrollViewer Grid.Row="1" Padding="24,16">
+            <StackPanel Spacing="24">
+                
+                <!-- Extraction Settings -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Extraction" Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="SemiBold"/>
+                    
+                    <StackPanel Spacing="8" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8">
+                        <ToggleSwitch x:Name="CreateSubfolderToggle" 
+                                    Header="Create subfolder for extraction"
+                                    IsOn="True"
+                                    OnContent="Enabled" 
+                                    OffContent="Disabled"/>
+                        
+                        <ToggleSwitch x:Name="PreserveTimestampsToggle"
+                                    Header="Preserve file timestamps"
+                                    IsOn="True"
+                                    OnContent="Enabled" 
+                                    OffContent="Disabled"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Behavior Settings -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Behavior" Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="SemiBold"/>
+                    
+                    <StackPanel Spacing="8" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock Text="When file exists" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="OverwritePolicyCombo" 
+                                    SelectedIndex="0"
+                                    HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="Ask me"/>
+                                <ComboBoxItem Content="Auto-rename"/>
+                                <ComboBoxItem Content="Overwrite"/>
+                                <ComboBoxItem Content="Skip"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <ToggleSwitch x:Name="CloseAfterExtractionToggle"
+                                    Header="Close window after extraction"
+                                    IsOn="False"
+                                    OnContent="Enabled" 
+                                    OffContent="Disabled"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Appearance Settings -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Appearance" Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="SemiBold"/>
+                    
+                    <StackPanel Spacing="8" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock Text="Theme" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="ThemeCombo" 
+                                    SelectedIndex="0"
+                                    SelectionChanged="ThemeCombo_SelectionChanged"
+                                    HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="System default"/>
+                                <ComboBoxItem Content="Light"/>
+                                <ComboBoxItem Content="Dark"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Advanced Settings -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Advanced" Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="SemiBold"/>
+                    
+                    <StackPanel Spacing="8" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8">
+                        <ToggleSwitch x:Name="EnableLoggingToggle"
+                                    Header="Enable logging"
+                                    IsOn="True"
+                                    OnContent="Enabled" 
+                                    OffContent="Disabled"/>
+                        
+                        <StackPanel>
+                            <TextBlock Text="Buffer size (KB)" Margin="0,0,0,4"/>
+                            <NumberBox x:Name="BufferSizeNumber"
+                                     Value="64"
+                                     Minimum="16"
+                                     Maximum="1024"
+                                     SpinButtonPlacementMode="Inline"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" Padding="24,16" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Reset to Defaults" Click="ResetButton_Click"/>
+                <Button Content="Save" Style="{StaticResource AccentButtonStyle}" Click="SaveButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

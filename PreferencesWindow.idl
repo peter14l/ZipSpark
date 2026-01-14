@@ -1,0 +1,8 @@
+namespace ZipSpark_New
+{
+    [default_interface]
+    runtimeclass PreferencesWindow : Microsoft.UI.Xaml.Window
+    {
+        PreferencesWindow();
+    }
+}
