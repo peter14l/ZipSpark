@@ -4,5 +4,6 @@ namespace ZipSpark_New
     runtimeclass MainWindow : Microsoft.UI.Xaml.Window
     {
         MainWindow();
+        MainWindow(String archivePath);
     }
 }

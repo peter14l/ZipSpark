@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App.xaml.h"
 #include "MainWindow.xaml.h"
+#include "Utils/Logger.h"
 
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
@@ -18,6 +19,9 @@ namespace winrt::ZipSpark_New::implementation
     {
         // Xaml objects should not call InitializeComponent during construction.
         // See https://github.com/microsoft/cppwinrt/tree/master/nuget#initializecomponent
+        
+        // Initialize logger
+        LOG_INFO(L"ZipSpark application starting");
 
 #if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
         UnhandledException([](IInspectable const&, UnhandledExceptionEventArgs const& e)
@@ -37,7 +41,40 @@ namespace winrt::ZipSpark_New::implementation
     /// <param name="e">Details about the launch request and process.</param>
     void App::OnLaunched([[maybe_unused]] LaunchActivatedEventArgs const& e)
     {
-        window = make<MainWindow>();
+        // Parse command-line arguments for file association
+        winrt::hstring archivePath;
+        
+        try
+        {
+            // Get command-line arguments
+            int argc = 0;
+            LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+            
+            if (argv && argc > 1)
+            {
+                // First argument after exe is the archive path
+                archivePath = argv[1];
+                LOG_INFO(L"Launched with archive: " + std::wstring(archivePath.c_str()));
+            }
+            
+            if (argv)
+                LocalFree(argv);
+        }
+        catch (...)
+        {
+            // Ignore command-line parsing errors
+        }
+        
+        // Create main window with archive path (if provided)
+        if (!archivePath.empty())
+        {
+            window = make<MainWindow>(archivePath);
+        }
+        else
+        {
+            window = make<MainWindow>();
+        }
+        
         window.Activate();
     }
 }
