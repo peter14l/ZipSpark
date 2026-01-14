@@ -80,9 +80,7 @@
             <uap:SupportedFileTypes>
               <uap:FileType>.tar</uap:FileType>
               <uap:FileType>.gz</uap:FileType>
-              <uap:FileType>.tar.gz</uap:FileType>
               <uap:FileType>.tgz</uap:FileType>
-              <uap:FileType>.tar.xz</uap:FileType>
               <uap:FileType>.txz</uap:FileType>
               <uap:FileType>.xz</uap:FileType>
             </uap:SupportedFileTypes>
