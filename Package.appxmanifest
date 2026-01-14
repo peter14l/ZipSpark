@@ -4,8 +4,9 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap3 rescap">
 
   <Identity
     Name="8b8d2ade-6cf4-482b-8497-bc4ad96ff63d"
@@ -52,6 +53,12 @@
             </uap:SupportedFileTypes>
             <uap:DisplayName>ZIP Archive</uap:DisplayName>
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            
+            <!-- Context Menu Verbs -->
+            <uap3:SupportedVerbs>
+              <uap3:Verb Id="extracthere" Parameters="--extract-here &quot;%1&quot;">Extract Here</uap3:Verb>
+              <uap3:Verb Id="extractto" Parameters="--extract-to &quot;%1&quot;">Extract to...</uap3:Verb>
+            </uap3:SupportedVerbs>
           </uap:FileTypeAssociation>
         </uap:Extension>
         

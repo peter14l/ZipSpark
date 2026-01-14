@@ -41,8 +41,10 @@ namespace winrt::ZipSpark_New::implementation
     /// <param name="e">Details about the launch request and process.</param>
     void App::OnLaunched([[maybe_unused]] LaunchActivatedEventArgs const& e)
     {
-        // Parse command-line arguments for file association
+        // Parse command-line arguments for file association and context menu verbs
         winrt::hstring archivePath;
+        bool extractHere = false;
+        bool extractTo = false;
         
         try
         {
@@ -50,19 +52,40 @@ namespace winrt::ZipSpark_New::implementation
             int argc = 0;
             LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
             
-            if (argv && argc > 1)
-            {
-                // First argument after exe is the archive path
-                archivePath = argv[1];
-                LOG_INFO(L"Launched with archive: " + std::wstring(archivePath.c_str()));
-            }
-            
             if (argv)
+            {
+                for (int i = 1; i < argc; i++)
+                {
+                    std::wstring arg = argv[i];
+                    
+                    if (arg == L"--extract-here")
+                    {
+                        extractHere = true;
+                    }
+                    else if (arg == L"--extract-to")
+                    {
+                        extractTo = true;
+                    }
+                    else if (arg.find(L".zip") != std::wstring::npos)
+                    {
+                        archivePath = arg;
+                    }
+                }
+                
                 LocalFree(argv);
+            }
         }
         catch (...)
         {
             // Ignore command-line parsing errors
+        }
+        
+        // Handle context menu verbs (silent extraction)
+        if ((extractHere || extractTo) && !archivePath.empty())
+        {
+            // TODO: Implement silent extraction handlers
+            LOG_INFO(extractHere ? L"Extract Here requested" : L"Extract To requested");
+            // For now, just open the window
         }
         
         // Create main window with archive path (if provided)
