@@ -13,6 +13,8 @@ namespace ZipSpark
     {
         Success = 0,
         FileNotFound,
+        ArchiveNotFound,
+        DestinationNotFound,
         AccessDenied,
         ArchiveCorrupted,
         UnsupportedFormat,
@@ -41,6 +43,10 @@ namespace ZipSpark
                 return L"Operation completed successfully.";
             case ErrorCode::FileNotFound:
                 return L"The archive file could not be found.";
+            case ErrorCode::ArchiveNotFound:
+                return L"The archive could not be opened or accessed.";
+            case ErrorCode::DestinationNotFound:
+                return L"The destination folder could not be accessed.";
             case ErrorCode::AccessDenied:
                 return L"Access denied. Please check file permissions.";
             case ErrorCode::ArchiveCorrupted:

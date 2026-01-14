@@ -83,7 +83,7 @@ bool WindowsShellEngine::AnalyzeArchiveStructure(const std::wstring& archivePath
             return false;
 
         // Get the ZIP folder
-        _variant_t zipPathVariant(zipPath);
+        _variant_t zipPathVariant(archivePath.c_str());
         Folder* pZipFolder = nullptr;
         hr = pShell->NameSpace(zipPathVariant, &pZipFolder);
         
