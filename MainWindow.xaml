@@ -9,12 +9,11 @@
     mc:Ignorable="d"
     Title="ZipSpark">
 
-    <Grid>
-        <!-- Mica Backdrop -->
-        <Grid.Background>
-            <SolidColorBrush Color="Transparent"/>
-        </Grid.Background>
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="Base"/>
+    </Window.SystemBackdrop>
 
+    <Grid Background="Transparent" AllowDrop="True" DragOver="Grid_DragOver" Drop="Grid_Drop">
         <Grid Padding="40,32">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -49,27 +48,26 @@
                     
                     <!-- Archive Info Card -->
                     <Border 
-                        Background="{StaticResource DarkSurfaceBrush}"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         CornerRadius="8"
                         Padding="24"
-                        BorderBrush="{StaticResource PrimaryBlueBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1">
                         <StackPanel Spacing="12">
                             <TextBlock 
                                 Text="Ready to Extract"
-                                Style="{StaticResource SubtitleTextBlockStyle}"
-                                Foreground="{StaticResource TextPrimaryBrush}"/>
+                                Style="{StaticResource SubtitleTextBlockStyle}"/>
                             <TextBlock 
                                 x:Name="ArchivePathText"
                                 Text="Drop an archive or use file associations"
                                 Style="{StaticResource BodyTextBlockStyle}"
-                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 TextWrapping="Wrap"/>
                             <TextBlock 
                                 x:Name="ArchiveInfoText"
                                 Text=""
                                 Style="{StaticResource CaptionTextBlockStyle}"
-                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Visibility="Collapsed"/>
                         </StackPanel>
                     </Border>

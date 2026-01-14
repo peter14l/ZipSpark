@@ -203,6 +203,43 @@ namespace winrt::ZipSpark_New::implementation
         prefsWindow.Activate();
     }
 
+    void MainWindow::Grid_DragOver(IInspectable const&, DragEventArgs const& e)
+    {
+        // Check if dragged item contains files
+        if (e.DataView().Contains(winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::StorageItems()))
+        {
+            e.AcceptedOperation(winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::Copy);
+            e.DragUIOverride().Caption(L"Drop to extract");
+            e.DragUIOverride().IsCaptionVisible(true);
+            e.DragUIOverride().IsContentVisible(true);
+        }
+        else
+        {
+            e.AcceptedOperation(winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::None);
+        }
+    }
+
+    void MainWindow::Grid_Drop(IInspectable const&, DragEventArgs const& e)
+    {
+        // Get dropped files
+        if (e.DataView().Contains(winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::StorageItems()))
+        {
+            auto items = e.DataView().GetStorageItemsAsync().get();
+            if (items.Size() > 0)
+            {
+                auto file = items.GetAt(0).try_as<winrt::Windows::Storage::StorageFile>();
+                if (file)
+                {
+                    std::wstring path = file.Path().c_str();
+                    LOG_INFO(L"File dropped: " + path);
+                    
+                    // Start extraction
+                    StartExtraction(path);
+                }
+            }
+        }
+    }
+
     void MainWindow::ShowExtractionProgress()
     {
         ProgressSection().Visibility(Visibility::Visible);
