@@ -3,7 +3,7 @@
 #include <string>
 #include <optional>
 
-namespace ZipSpark::Core
+namespace ZipSpark
 {
     /// <summary>
     /// Policy for handling file conflicts during extraction

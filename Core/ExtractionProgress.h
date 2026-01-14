@@ -4,7 +4,7 @@
 #include <atomic>
 #include <chrono>
 
-namespace ZipSpark::Core
+namespace ZipSpark
 {
     /// <summary>
     /// Progress tracking for archive extraction operations

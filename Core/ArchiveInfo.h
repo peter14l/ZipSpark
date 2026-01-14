@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 
-namespace ZipSpark::Core
+namespace ZipSpark
 {
     /// <summary>
     /// Supported archive format types

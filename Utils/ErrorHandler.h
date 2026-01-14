@@ -4,7 +4,7 @@
 #include <Windows.h>
 #include <winrt/Windows.Foundation.h>
 
-namespace ZipSpark::Utils
+namespace ZipSpark
 {
     /// <summary>
     /// Error codes for ZipSpark operations

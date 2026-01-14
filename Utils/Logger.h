@@ -8,7 +8,7 @@
 #include <chrono>
 #include <mutex>
 
-namespace ZipSpark::Utils
+namespace ZipSpark
 {
     /// <summary>
     /// Log severity levels
@@ -155,7 +155,7 @@ namespace ZipSpark::Utils
 }
 
 // Convenience macros for logging
-#define LOG_DEBUG(msg) ZipSpark::Utils::Logger::GetInstance().Debug(msg)
-#define LOG_INFO(msg) ZipSpark::Utils::Logger::GetInstance().Info(msg)
-#define LOG_WARNING(msg) ZipSpark::Utils::Logger::GetInstance().Warning(msg)
-#define LOG_ERROR(msg) ZipSpark::Utils::Logger::GetInstance().Error(msg)
+#define LOG_DEBUG(msg) ZipSpark::Logger::GetInstance().Debug(msg)
+#define LOG_INFO(msg) ZipSpark::Logger::GetInstance().Info(msg)
+#define LOG_WARNING(msg) ZipSpark::Logger::GetInstance().Warning(msg)
+#define LOG_ERROR(msg) ZipSpark::Logger::GetInstance().Error(msg)
