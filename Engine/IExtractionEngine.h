@@ -1,11 +1,14 @@
+```cpp
 #pragma once
 #include "pch.h"
 #include "../Core/ArchiveInfo.h"
 #include "../Core/ExtractionOptions.h"
 #include "../Core/ExtractionProgress.h"
+#include "../Core/IProgressCallback.h" // Added this include
 #include <memory>
+#include <string> // Added this include
 
-namespace ZipSpark::Engine
+namespace ZipSpark
 {
     /// <summary>
     /// Abstract interface for archive extraction engines

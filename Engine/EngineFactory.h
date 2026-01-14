@@ -1,5 +1,6 @@
 #pragma once
 #include "IExtractionEngine.h"
+#include "../Core/ArchiveInfo.h"
 #include <memory>
 
 namespace ZipSpark {

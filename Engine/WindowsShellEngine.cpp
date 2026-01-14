@@ -83,9 +83,9 @@ bool WindowsShellEngine::AnalyzeArchiveStructure(const std::wstring& archivePath
             return false;
 
         // Get the ZIP folder
-        _bstr_t zipPath(archivePath.c_str());
+        _variant_t zipPathVariant(zipPath);
         Folder* pZipFolder = nullptr;
-        hr = pShell->NameSpace(zipPath, &pZipFolder);
+        hr = pShell->NameSpace(zipPathVariant, &pZipFolder);
         
         if (SUCCEEDED(hr) && pZipFolder)
         {
@@ -169,13 +169,13 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
         }
 
         // Get source and destination folders
-        _bstr_t zipPath(info.archivePath.c_str());
-        _bstr_t destPathBstr(destination.c_str());
+        _variant_t zipPathVariant(info.archivePath.c_str());
+        _variant_t destPathVariant(destination.c_str());
         
         Folder* pZipFolder = nullptr;
         Folder* pDestFolder = nullptr;
         
-        hr = pShell->NameSpace(zipPath, &pZipFolder);
+        hr = pShell->NameSpace(zipPathVariant, &pZipFolder);
         if (FAILED(hr) || !pZipFolder)
         {
             pShell->Release();
@@ -183,7 +183,7 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
             return;
         }
         
-        hr = pShell->NameSpace(destPathBstr, &pDestFolder);
+        hr = pShell->NameSpace(destPathVariant, &pDestFolder);
         if (FAILED(hr) || !pDestFolder)
         {
             pZipFolder->Release();
