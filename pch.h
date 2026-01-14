@@ -37,3 +37,9 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+
+// COM and Shell includes for extraction
+#include <comdef.h>
+#include <shldisp.h>
+#include <shlobj.h>
+

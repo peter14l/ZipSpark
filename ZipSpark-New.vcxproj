@@ -130,6 +130,8 @@
     <ClInclude Include="Core\ExtractionOptions.h" />
     <ClInclude Include="Core\ExtractionProgress.h" />
     <ClInclude Include="Engine\IExtractionEngine.h" />
+    <ClInclude Include="Engine\WindowsShellEngine.h" />
+    <ClInclude Include="Engine\EngineFactory.h" />
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\ErrorHandler.h" />
   </ItemGroup>
@@ -144,6 +146,8 @@
     <ClCompile Include="App.xaml.cpp">
       <DependentUpon>App.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Engine\WindowsShellEngine.cpp" />
+    <ClCompile Include="Engine\EngineFactory.cpp" />
     <ClCompile Include="MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>
