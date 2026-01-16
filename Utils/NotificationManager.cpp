@@ -6,10 +6,6 @@
 #include <ShObjIdl.h>
 #include <wrl/client.h>
 
-using namespace winrt;
-using namespace Windows::UI::Notifications;
-using namespace Windows::Data::Xml::Dom;
-
 namespace ZipSpark {
 
 void NotificationManager::ShowNotification(const std::wstring& title, const std::wstring& message)
@@ -26,17 +22,18 @@ void NotificationManager::ShowNotification(const std::wstring& title, const std:
             L"</visual>"
             L"</toast>";
 
-        XmlDocument doc;
+        winrt::Windows::Data::Xml::Dom::XmlDocument doc;
         doc.LoadXml(toastXml);
 
-        ToastNotification toast(doc);
-        ToastNotificationManager::CreateToastNotifier(L"ZipSpark").Show(toast);
+        winrt::Windows::UI::Notifications::ToastNotification toast(doc);
+        winrt::Windows::UI::Notifications::ToastNotificationManager::CreateToastNotifier(L"ZipSpark").Show(toast);
         
         LOG_INFO(L"Notification shown: " + title);
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Failed to show notification: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        winrt::hstring msg = winrt::to_hstring(e.what());
+        LOG_ERROR(L"Failed to show notification: " + std::wstring(msg.c_str()));
     }
 }
 
@@ -60,11 +57,11 @@ void NotificationManager::ShowError(const std::wstring& title, const std::wstrin
             L"<audio src='ms-winsoundevent:Notification.Default'/>"
             L"</toast>";
 
-        XmlDocument doc;
+        winrt::Windows::Data::Xml::Dom::XmlDocument doc;
         doc.LoadXml(toastXml);
 
-        ToastNotification toast(doc);
-        ToastNotificationManager::CreateToastNotifier(L"ZipSpark").Show(toast);
+        winrt::Windows::UI::Notifications::ToastNotification toast(doc);
+        winrt::Windows::UI::Notifications::ToastNotificationManager::CreateToastNotifier(L"ZipSpark").Show(toast);
     }
     catch (...) {}
 }
@@ -73,7 +70,7 @@ void NotificationManager::UpdateTaskbarProgress(HWND hwnd, int progress, int tot
 {
     try
     {
-        Microsoft::WRL::ComPtr<ITaskbarList3> taskbar;
+        ::Microsoft::WRL::ComPtr<ITaskbarList3> taskbar;
         if (SUCCEEDED(CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar))))
         {
             taskbar->SetProgressValue(hwnd, progress, total);
@@ -86,7 +83,7 @@ void NotificationManager::SetTaskbarState(HWND hwnd, int state)
 {
     try
     {
-        Microsoft::WRL::ComPtr<ITaskbarList3> taskbar;
+        ::Microsoft::WRL::ComPtr<ITaskbarList3> taskbar;
         if (SUCCEEDED(CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar))))
         {
             taskbar->SetProgressState(hwnd, (TBPFLAG)state);

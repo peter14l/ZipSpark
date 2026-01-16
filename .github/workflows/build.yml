@@ -26,19 +26,29 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
+    - name: Cache vcpkg
+      id: cache-vcpkg
+      uses: actions/cache@v3
+      with:
+        path: vcpkg
+        key: ${{ runner.os }}-vcpkg-libarchive-v1
+
     - name: Setup vcpkg
+      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
         .\bootstrap-vcpkg.bat
         .\vcpkg integrate install
         cd ..
-        echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
+
+    - name: Set vcpkg root
+      run: echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
 
     - name: Install libarchive
       run: |
         .\vcpkg\vcpkg install libarchive:x64-windows
-        echo "Libarchive installed successfully"
+        echo "Libarchive installed/verified successfully"
         
     - name: Set vcpkg environment
       run: |
