@@ -117,15 +117,12 @@
                             <!-- Browse Button -->
                             <Button 
                                 x:Name="BrowseButton"
-                                Content="Browse Files"
                                 Click="ExtractButton_Click"
                                 HorizontalAlignment="Center">
-                                <Button.Content>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <SymbolIcon Symbol="OpenFile" FontSize="16"/>
-                                        <TextBlock Text="Browse Files"/>
-                                    </StackPanel>
-                                </Button.Content>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon Symbol="OpenFile"/>
+                                    <TextBlock Text="Browse Files"/>
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                     </Border>
