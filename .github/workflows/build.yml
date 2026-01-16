@@ -27,14 +27,23 @@ jobs:
       uses: NuGet/setup-nuget@v2
 
     - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
+        .\vcpkg integrate install
+        cd ..
+        echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
 
     - name: Install libarchive
       run: |
-        vcpkg install libarchive:x64-windows
-        vcpkg integrate install
+        .\vcpkg\vcpkg install libarchive:x64-windows
+        echo "Libarchive installed successfully"
+        
+    - name: Set vcpkg environment
+      run: |
+        echo "VCPKG_DEFAULT_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        echo "CMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
 
     - name: Restore NuGet packages
       run: nuget restore packages.config -PackagesDirectory packages
@@ -87,13 +96,16 @@ jobs:
 
     - name: Build project
       run: |
-        $vcpkgToolchain = "$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+        $vcpkgRoot = "$PWD\vcpkg"
+        $vcpkgInclude = "$vcpkgRoot\installed\x64-windows\include"
+        $vcpkgLib = "$vcpkgRoot\installed\x64-windows\lib"
+        
         if ("${{ matrix.configuration }}" -eq "Release" -and (Test-Path "ZipSpark_TemporaryKey.pfx")) {
           Write-Host "Building with certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /p:VcpkgEnabled=true /p:VcpkgConfiguration=Release /p:VcpkgTriplet=x64-windows /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /p:AdditionalIncludeDirectories="$vcpkgInclude" /p:AdditionalLibraryDirectories="$vcpkgLib" /m /v:minimal
         } else {
           Write-Host "Building without certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:VcpkgEnabled=true /p:VcpkgConfiguration=${{ matrix.configuration }} /p:VcpkgTriplet=x64-windows /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AdditionalIncludeDirectories="$vcpkgInclude" /p:AdditionalLibraryDirectories="$vcpkgLib" /m /v:minimal
         }
 
     - name: Upload MSIX package
