@@ -110,12 +110,22 @@ jobs:
         $vcpkgInclude = "$vcpkgRoot\installed\x64-windows\include"
         $vcpkgLib = "$vcpkgRoot\installed\x64-windows\lib"
         
+        # Debug: Show paths
+        Write-Host "vcpkg Include: $vcpkgInclude"
+        Write-Host "vcpkg Lib: $vcpkgLib"
+        Write-Host "Files in include dir:"
+        Get-ChildItem $vcpkgInclude -ErrorAction SilentlyContinue | Select-Object -First 10
+        
+        # Set environment variables for compiler
+        $env:INCLUDE = "$vcpkgInclude;$env:INCLUDE"
+        $env:LIB = "$vcpkgLib;$env:LIB"
+        
         if ("${{ matrix.configuration }}" -eq "Release" -and (Test-Path "ZipSpark_TemporaryKey.pfx")) {
           Write-Host "Building with certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /p:AdditionalIncludeDirectories="$vcpkgInclude" /p:AdditionalLibraryDirectories="$vcpkgLib" /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" "/p:IncludePath=$vcpkgInclude;%(IncludePath)" "/p:LibraryPath=$vcpkgLib;%(LibraryPath)" /m /v:minimal
         } else {
           Write-Host "Building without certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AdditionalIncludeDirectories="$vcpkgInclude" /p:AdditionalLibraryDirectories="$vcpkgLib" /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true "/p:IncludePath=$vcpkgInclude;%(IncludePath)" "/p:LibraryPath=$vcpkgLib;%(LibraryPath)" /m /v:minimal
         }
 
     - name: Upload MSIX package
