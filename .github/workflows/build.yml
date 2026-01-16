@@ -31,7 +31,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: vcpkg
-        key: ${{ runner.os }}-vcpkg-libarchive-v1
+        key: ${{ runner.os }}-vcpkg-libarchive-v2
 
     - name: Setup vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'
