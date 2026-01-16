@@ -136,58 +136,64 @@ namespace winrt::ZipSpark_New::implementation
         
         LOG_INFO(L"Starting extraction for: " + archivePath);
         
-        // Show progress UI
+        // Show progress UI immediately
         ShowExtractionProgress();
-        
-        // Create extraction engine
-        m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
-        if (!m_engine)
-        {
-            OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format");
-            m_extracting = false;
-            return;
-        }
-        
-        // Get archive info
-        ZipSpark::ArchiveInfo info;
-        try 
-        {
-            info = m_engine->GetArchiveInfo(archivePath);
-        }
-        catch (...)
-        {
-            OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
-            m_extracting = false;
-            return;
-        }
-        
-        // Update UI with archive info
-        DispatcherQueue().TryEnqueue([this, info]() {
-            // Hide empty state elements
-            DropZoneTitle().Visibility(Visibility::Collapsed);
-            SupportedFormatsPanel().Visibility(Visibility::Collapsed);
-            BrowseButton().Visibility(Visibility::Collapsed);
-            
-            // Show archive info
-            ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
-            ArchivePathText().Visibility(Visibility::Visible);
-            
-            std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
-            std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
-            ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
-            ArchiveInfoText().Visibility(Visibility::Visible);
-        });
-        
-        // Set extraction options
-        ZipSpark::ExtractionOptions options;
-        options.createSubfolder = !info.hasSingleRoot;
-        options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
+        StatusText().Text(L"Scanning archive...");
+        FileProgressBar().IsIndeterminate(true);
         
         // Start extraction on background thread using WinRT async pattern
-        [this, info, options]() -> winrt::fire_and_forget
+        [this, archivePath]() -> winrt::fire_and_forget
         {
             // Switch to background thread
             co_await winrt::resume_background();
+            
+            // Create extraction engine
+            m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
+            if (!m_engine)
+            {
+                DispatcherQueue().TryEnqueue([this]() {
+                    OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format");
+                });
+                m_extracting = false;
+                co_return;
+            }
+            
+            // Get archive info
+            ZipSpark::ArchiveInfo info;
+            try 
+            {
+                info = m_engine->GetArchiveInfo(archivePath);
+            }
+            catch (...)
+            {
+                DispatcherQueue().TryEnqueue([this]() {
+                    OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
+                });
+                m_extracting = false;
+                co_return;
+            }
+            
+            // Update UI with archive info
+            DispatcherQueue().TryEnqueue([this, info]() {
+                // Hide empty state elements
+                DropZoneTitle().Visibility(Visibility::Collapsed);
+                SupportedFormatsPanel().Visibility(Visibility::Collapsed);
+                BrowseButton().Visibility(Visibility::Collapsed);
+                
+                // Show archive info
+                ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
+                ArchivePathText().Visibility(Visibility::Visible);
+                
+                std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
+                std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
+                ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
+                ArchiveInfoText().Visibility(Visibility::Visible);
+            });
+            
+            // Set extraction options
+            ZipSpark::ExtractionOptions options;
+            options.createSubfolder = !info.hasSingleRoot;
+            options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
             
             try
             {
@@ -195,8 +201,11 @@ namespace winrt::ZipSpark_New::implementation
             }
             catch (const std::exception& e)
             {
-                LOG_ERROR(L"Extraction exception: " + std::wstring(e.what(), e.what() + strlen(e.what())));
-                OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
+                winrt::hstring msg = winrt::to_hstring(e.what());
+                LOG_ERROR(L"Extraction exception: " + std::wstring(msg.c_str()));
+                DispatcherQueue().TryEnqueue([this]() {
+                    OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
+                });
             }
             
             m_extracting = false;
@@ -329,6 +338,8 @@ namespace winrt::ZipSpark_New::implementation
         m_currentFileIndex = 0;
         m_extractionStartTime = std::chrono::steady_clock::now();
         m_lastSpeedUpdate = m_extractionStartTime;
+        m_lastUIUpdate = m_extractionStartTime;
+        m_lastFileUIUpdate = m_extractionStartTime;
         m_lastBytesProcessed = 0;
         
         DispatcherQueue().TryEnqueue([this]() {
@@ -339,6 +350,15 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes)
     {
+        // Throttle updates to ~30fps (33ms) to prevent UI thread starvation
+        auto now = std::chrono::steady_clock::now();
+        if (percentComplete < 100 && 
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastUIUpdate).count() < 33)
+        {
+            return;
+        }
+        m_lastUIUpdate = now;
+
         UpdateProgressUI(percentComplete, bytesProcessed, totalBytes);
         
         // Update taskbar progress
@@ -354,6 +374,15 @@ namespace winrt::ZipSpark_New::implementation
     void MainWindow::OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles)
     {
         m_currentFileIndex = fileIndex;
+        
+        // Throttle file progress updates too
+        auto now = std::chrono::steady_clock::now();
+        if (fileIndex < totalFiles && 
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUIUpdate).count() < 33)
+        {
+            return;
+        }
+        m_lastFileUIUpdate = now;
         
         DispatcherQueue().TryEnqueue([this, currentFile, fileIndex, totalFiles]() {
             // Show file count

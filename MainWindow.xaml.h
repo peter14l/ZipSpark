@@ -47,6 +47,10 @@ namespace winrt::ZipSpark_New::implementation
         std::chrono::steady_clock::time_point m_lastSpeedUpdate;
         int m_totalFiles{ 0 };
         int m_currentFileIndex{ 0 };
+        
+        // Throttling
+        std::chrono::steady_clock::time_point m_lastUIUpdate;
+        std::chrono::steady_clock::time_point m_lastFileUIUpdate;
     };
 }
 
