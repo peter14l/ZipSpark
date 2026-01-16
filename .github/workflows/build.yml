@@ -26,15 +26,7 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
-    - name: Cache vcpkg
-      id: cache-vcpkg
-      uses: actions/cache@v3
-      with:
-        path: vcpkg
-        key: ${{ runner.os }}-vcpkg-libarchive-v2
-
     - name: Setup vcpkg
-      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
