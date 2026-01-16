@@ -29,6 +29,38 @@ jobs:
     - name: Restore NuGet packages
       run: nuget restore packages.config -PackagesDirectory packages
 
+    - name: Increment MSIX version
+      run: |
+        $manifestPath = "Package.appxmanifest"
+        [xml]$manifest = Get-Content $manifestPath
+        
+        # Get current version
+        $currentVersion = $manifest.Package.Identity.Version
+        Write-Host "Current version: $currentVersion"
+        
+        # Parse version (format: Major.Minor.Build.Revision)
+        $versionParts = $currentVersion.Split('.')
+        $major = [int]$versionParts[0]
+        $minor = [int]$versionParts[1]
+        $build = [int]$versionParts[2]
+        $revision = [int]$versionParts[3]
+        
+        # Increment build number (or use GitHub run number)
+        $newBuild = ${{ github.run_number }}
+        $newVersion = "$major.$minor.$newBuild.0"
+        
+        Write-Host "New version: $newVersion"
+        
+        # Update manifest
+        $manifest.Package.Identity.Version = $newVersion
+        $manifest.Save($manifestPath)
+        
+        Write-Host "Version updated successfully!"
+        
+        # Set output for later use
+        echo "VERSION=$newVersion" >> $env:GITHUB_ENV
+
+
     - name: Decode certificate
       if: matrix.configuration == 'Release' && github.event_name != 'pull_request'
       run: |
@@ -57,7 +89,7 @@ jobs:
       if: matrix.configuration == 'Release'
       uses: actions/upload-artifact@v4
       with:
-        name: ZipSpark-MSIX-${{ matrix.platform }}
+        name: ZipSpark-MSIX-${{ matrix.platform }}-v${{ env.VERSION }}
         path: AppPackages/**/*.msix
 
     - name: Upload build artifacts

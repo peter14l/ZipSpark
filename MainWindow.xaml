@@ -36,39 +36,97 @@
                 
                 <!-- Settings Button -->
                 <Button x:Name="SettingsButton"
-                        Content="⚙️ Settings"
                         Click="PreferencesButton_Click"
                         HorizontalAlignment="Right"
-                        VerticalAlignment="Top"/>
+                        VerticalAlignment="Top"
+                        ToolTipService.ToolTip="Settings (Alt+S)"
+                        AccessKey="S">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Setting"/>
+                        <TextBlock Text="Settings"/>
+                    </StackPanel>
+                </Button>
             </Grid>
 
             <!-- Main Content Area -->
             <Grid Grid.Row="1" VerticalAlignment="Center">
                 <StackPanel Spacing="24" MaxWidth="600">
                     
-                    <!-- Archive Info Card -->
+                    <!-- Archive Info Card / Drag-Drop Zone -->
                     <Border 
+                        x:Name="DropZoneBorder"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        Padding="24"
+                        CornerRadius="12"
+                        Padding="32"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1">
-                        <StackPanel Spacing="12">
+                        BorderThickness="2"
+                        MinHeight="200">
+                        <StackPanel Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!-- Icon -->
+                            <FontIcon 
+                                Glyph="&#xE8B7;" 
+                                FontSize="48"
+                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            
+                            <!-- Title -->
                             <TextBlock 
-                                Text="Ready to Extract"
-                                Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                x:Name="DropZoneTitle"
+                                Text="Drop Archive Here"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                HorizontalAlignment="Center"
+                                FontWeight="SemiBold"/>
+                            
+                            <!-- Archive Path (hidden initially) -->
                             <TextBlock 
                                 x:Name="ArchivePathText"
-                                Text="Drop an archive or use file associations"
+                                Text=""
                                 Style="{StaticResource BodyTextBlockStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                TextWrapping="Wrap"/>
+                                TextWrapping="Wrap"
+                                HorizontalAlignment="Center"
+                                Visibility="Collapsed"/>
+                            
+                            <!-- Archive Info (hidden initially) -->
                             <TextBlock 
                                 x:Name="ArchiveInfoText"
                                 Text=""
                                 Style="{StaticResource CaptionTextBlockStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                HorizontalAlignment="Center"
                                 Visibility="Collapsed"/>
+                            
+                            <!-- Supported Formats -->
+                            <StackPanel x:Name="SupportedFormatsPanel" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="8,4">
+                                    <TextBlock Text="ZIP" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="8,4">
+                                    <TextBlock Text="7Z" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="8,4">
+                                    <TextBlock Text="RAR" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="8,4">
+                                    <TextBlock Text="TAR" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="8,4">
+                                    <TextBlock Text="GZ" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </StackPanel>
+                            
+                            <!-- Browse Button -->
+                            <Button 
+                                x:Name="BrowseButton"
+                                Content="Browse Files"
+                                Click="ExtractButton_Click"
+                                HorizontalAlignment="Center">
+                                <Button.Content>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <SymbolIcon Symbol="OpenFile" FontSize="16"/>
+                                        <TextBlock Text="Browse Files"/>
+                                    </StackPanel>
+                                </Button.Content>
+                            </Button>
                         </StackPanel>
                     </Border>
 
@@ -96,7 +154,9 @@
                                 CornerRadius="4"
                                 Minimum="0"
                                 Maximum="100"
-                                Value="0"/>
+                                Value="0"
+                                AutomationProperties.Name="Overall extraction progress"
+                                AutomationProperties.LiveSetting="Polite"/>
                         </StackPanel>
 
                         <!-- Current File Progress -->
@@ -133,7 +193,8 @@
                             Text="Preparing extraction..."
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            HorizontalAlignment="Center"/>
+                            HorizontalAlignment="Center"
+                            AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
 
                     <!-- Action Buttons -->
@@ -153,7 +214,11 @@
                             Foreground="White"
                             CornerRadius="8"
                             FontWeight="SemiBold"
-                            Click="ExtractButton_Click"/>
+                            Click="ExtractButton_Click"
+                            AccessKey="E"
+                            ToolTipService.ToolTip="Extract Archive (Alt+E)"
+                            AutomationProperties.Name="Extract Archive"
+                            AutomationProperties.HelpText="Extract the selected archive file"/>
 
                         <Button 
                             x:Name="CancelButton"
@@ -167,28 +232,24 @@
                             BorderThickness="1"
                             CornerRadius="8"
                             Visibility="Collapsed"
-                            Click="CancelButton_Click"/>
+                            Click="CancelButton_Click"
+                            AccessKey="C"
+                            ToolTipService.ToolTip="Cancel Extraction (Alt+C)"
+                            AutomationProperties.Name="Cancel Extraction"/>
                     </Grid>
 
                 </StackPanel>
             </Grid>
 
-            <!-- Footer Section -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center" Margin="0,32,0,0">
-                <HyperlinkButton 
-                    Content="Preferences"
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Click="PreferencesButton_Click"/>
-                <TextBlock 
-                    Text="•" 
-                    Foreground="{StaticResource TextDisabledBrush}"
-                    VerticalAlignment="Center"/>
-                <HyperlinkButton 
-                    Content="About"
-                    Foreground="{StaticResource TextSecondaryBrush}"/>
-            </StackPanel>
             <!-- Footer -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,24,0,0">
+                <HyperlinkButton 
+                    Content="Preferences"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Click="PreferencesButton_Click"/>
+                
+                <TextBlock Text="•" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                
                 <Button x:Name="DonateButton"
                         Content="Donate"
                         Click="DonateButton_Click"
@@ -196,7 +257,10 @@
                 
                 <TextBlock Text="•" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 
-                <HyperlinkButton Content="About" Click="AboutButton_Click"/>
+                <HyperlinkButton 
+                    Content="About" 
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Click="AboutButton_Click"/>
             </StackPanel>
         </Grid>
     </Grid>

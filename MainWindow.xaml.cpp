@@ -9,6 +9,8 @@
 #include "Core/ArchiveInfo.h"
 #include "Core/ExtractionOptions.h"
 #include "Utils/Logger.h"
+#include "Utils/NotificationManager.h"
+#include "Utils/RecentFiles.h"
 #include <winrt/Microsoft.UI.Composition.SystemBackdrops.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
@@ -99,7 +101,12 @@ namespace winrt::ZipSpark_New::implementation
         auto file = picker.PickSingleFileAsync().get();
         if (file)
         {
-            StartExtraction(file.Path().c_str());
+            std::wstring path = file.Path().c_str();
+            
+            // Add to recent files
+            ZipSpark::RecentFiles::GetInstance().AddFile(path);
+            
+            StartExtraction(path);
         }
     }
 
@@ -144,7 +151,14 @@ namespace winrt::ZipSpark_New::implementation
         
         // Update UI with archive info
         DispatcherQueue().TryEnqueue([this, info]() {
+            // Hide empty state elements
+            DropZoneTitle().Visibility(Visibility::Collapsed);
+            SupportedFormatsPanel().Visibility(Visibility::Collapsed);
+            BrowseButton().Visibility(Visibility::Collapsed);
+            
+            // Show archive info
             ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
+            ArchivePathText().Visibility(Visibility::Visible);
             
             std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
             std::wstring fileCountStr = std::to_wstring(info.fileCount) + L" files";
@@ -157,8 +171,12 @@ namespace winrt::ZipSpark_New::implementation
         options.createSubfolder = !info.hasSingleRoot;
         options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
         
-        // Start extraction on background thread
-        std::thread extractionThread([this, info, options]() {
+        // Start extraction on background thread using WinRT async pattern
+        [this, info, options]() -> winrt::fire_and_forget
+        {
+            // Switch to background thread
+            co_await winrt::resume_background();
+            
             try
             {
                 m_engine->Extract(info, options, this);
@@ -168,10 +186,9 @@ namespace winrt::ZipSpark_New::implementation
                 LOG_ERROR(L"Extraction exception: " + std::wstring(e.what(), e.what() + strlen(e.what())));
                 OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
             }
+            
             m_extracting = false;
-        });
-        
-        extractionThread.detach();
+        }();
     }
 
     void MainWindow::CancelButton_Click(IInspectable const&, RoutedEventArgs const&)
@@ -185,7 +202,12 @@ namespace winrt::ZipSpark_New::implementation
         HideExtractionProgress();
         m_extracting = false;
         
-        ArchivePathText().Text(L"Drop an archive or use file associations");
+        // Reset to empty state
+        DropZoneTitle().Visibility(Visibility::Visible);
+        SupportedFormatsPanel().Visibility(Visibility::Visible);
+        BrowseButton().Visibility(Visibility::Visible);
+        ArchivePathText().Text(L"");
+        ArchivePathText().Visibility(Visibility::Collapsed);
         ArchiveInfoText().Visibility(Visibility::Collapsed);
     }
 
@@ -260,6 +282,22 @@ namespace winrt::ZipSpark_New::implementation
             OverallProgressBar().Value(percent);
             OverallProgressText().Text(winrt::hstring(std::to_wstring(percent) + L"%"));
             
+            // Calculate extraction speed
+            auto now = std::chrono::steady_clock::now();
+            auto timeSinceLastUpdate = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastSpeedUpdate).count();
+            
+            if (timeSinceLastUpdate >= 500) // Update speed every 500ms
+            {
+                uint64_t bytesDelta = bytesProcessed - m_lastBytesProcessed;
+                double secondsElapsed = timeSinceLastUpdate / 1000.0;
+                double speedMBps = (bytesDelta / (1024.0 * 1024.0)) / secondsElapsed;
+                
+                SpeedText().Text(winrt::hstring(std::to_wstring(static_cast<int>(speedMBps)) + L" MB/s"));
+                
+                m_lastBytesProcessed = bytesProcessed;
+                m_lastSpeedUpdate = now;
+            }
+            
             double mbProcessed = bytesProcessed / (1024.0 * 1024.0);
             double mbTotal = totalBytes / (1024.0 * 1024.0);
             StatusText().Text(winrt::hstring(
@@ -274,6 +312,13 @@ namespace winrt::ZipSpark_New::implementation
     {
         LOG_INFO(L"Extraction started, total files: " + std::to_wstring(totalFiles));
         
+        // Initialize progress tracking
+        m_totalFiles = totalFiles;
+        m_currentFileIndex = 0;
+        m_extractionStartTime = std::chrono::steady_clock::now();
+        m_lastSpeedUpdate = m_extractionStartTime;
+        m_lastBytesProcessed = 0;
+        
         DispatcherQueue().TryEnqueue([this]() {
             StatusText().Text(L"Starting extraction...");
             FileProgressBar().IsIndeterminate(true);
@@ -283,17 +328,30 @@ namespace winrt::ZipSpark_New::implementation
     void MainWindow::OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes)
     {
         UpdateProgressUI(percentComplete, bytesProcessed, totalBytes);
+        
+        // Update taskbar progress
+        auto windowNative = this->try_as<::IWindowNative>();
+        if (windowNative)
+        {
+            HWND hwnd;
+            windowNative->get_WindowHandle(&hwnd);
+            ZipSpark::NotificationManager::GetInstance().UpdateTaskbarProgress(hwnd, percentComplete, 100);
+        }
     }
 
     void MainWindow::OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles)
     {
+        m_currentFileIndex = fileIndex;
+        
         DispatcherQueue().TryEnqueue([this, currentFile, fileIndex, totalFiles]() {
-            CurrentFileText().Text(winrt::hstring(currentFile));
+            // Show file count
+            std::wstring fileCountText = L"File " + std::to_wstring(fileIndex + 1) + L" of " + std::to_wstring(totalFiles);
+            CurrentFileText().Text(winrt::hstring(fileCountText + L": " + currentFile));
             FileProgressBar().IsIndeterminate(false);
             
             if (totalFiles > 0)
             {
-                int filePercent = (fileIndex * 100) / totalFiles;
+                int filePercent = ((fileIndex + 1) * 100) / totalFiles;
                 FileProgressBar().Value(filePercent);
             }
         });
@@ -302,6 +360,22 @@ namespace winrt::ZipSpark_New::implementation
     void MainWindow::OnComplete(const std::wstring& destination)
     {
         LOG_INFO(L"Extraction completed: " + destination);
+        
+        // Show notification
+        fs::path archivePath(m_archivePath);
+        ZipSpark::NotificationManager::GetInstance().ShowExtractionComplete(
+            archivePath.filename().wstring(), 
+            destination
+        );
+        
+        // Reset taskbar progress
+        auto windowNative = this->try_as<::IWindowNative>();
+        if (windowNative)
+        {
+            HWND hwnd;
+            windowNative->get_WindowHandle(&hwnd);
+            ZipSpark::NotificationManager::GetInstance().SetTaskbarState(hwnd, 0); // TBPF_NOPROGRESS
+        }
         
         DispatcherQueue().TryEnqueue([this, destination]() {
             // Update progress to 100%
@@ -324,13 +398,16 @@ namespace winrt::ZipSpark_New::implementation
             
             dialog.ShowAsync();
             
-            // Reset UI after dialog is shown
-            std::thread([this]() {
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                DispatcherQueue().TryEnqueue([this]() {
+            // Reset UI after a short delay
+            DispatcherQueue().TryEnqueue([this]() {
+                // Schedule UI reset
+                auto timer = DispatcherQueue().CreateTimer();
+                timer.Interval(std::chrono::seconds(3));
+                timer.Tick([this](auto&&, auto&&) {
                     HideExtractionProgress();
                 });
-            }).detach();
+                timer.Start();
+            });
         });
     }
 

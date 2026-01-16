@@ -40,6 +40,13 @@ namespace winrt::ZipSpark_New::implementation
         std::wstring m_archivePath;
         std::unique_ptr<ZipSpark::IExtractionEngine> m_engine;
         std::atomic<bool> m_extracting{ false };
+        
+        // Progress tracking
+        std::chrono::steady_clock::time_point m_extractionStartTime;
+        uint64_t m_lastBytesProcessed{ 0 };
+        std::chrono::steady_clock::time_point m_lastSpeedUpdate;
+        int m_totalFiles{ 0 };
+        int m_currentFileIndex{ 0 };
     };
 }
 
