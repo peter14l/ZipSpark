@@ -75,7 +75,7 @@ namespace winrt::ZipSpark_New::implementation
         }
     }
 
-    void MainWindow::ExtractButton_Click(IInspectable const&, RoutedEventArgs const&)
+    winrt::fire_and_forget MainWindow::ExtractButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
         // Show file picker to select archive
         auto picker = winrt::Windows::Storage::Pickers::FileOpenPicker();
@@ -100,7 +100,7 @@ namespace winrt::ZipSpark_New::implementation
         picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::Downloads);
         
         // Show picker
-        auto file = picker.PickSingleFileAsync().get();
+        auto file = co_await picker.PickSingleFileAsync();
         if (file)
         {
             std::wstring path = file.Path().c_str();
@@ -149,7 +149,17 @@ namespace winrt::ZipSpark_New::implementation
         }
         
         // Get archive info
-        ZipSpark::ArchiveInfo info = m_engine->GetArchiveInfo(archivePath);
+        ZipSpark::ArchiveInfo info;
+        try 
+        {
+            info = m_engine->GetArchiveInfo(archivePath);
+        }
+        catch (...)
+        {
+            OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
+            m_extracting = false;
+            return;
+        }
         
         // Update UI with archive info
         DispatcherQueue().TryEnqueue([this, info]() {
@@ -163,7 +173,7 @@ namespace winrt::ZipSpark_New::implementation
             ArchivePathText().Visibility(Visibility::Visible);
             
             std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
-            std::wstring fileCountStr = std::to_wstring(info.fileCount) + L" files";
+            std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
             ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
             ArchiveInfoText().Visibility(Visibility::Visible);
         });

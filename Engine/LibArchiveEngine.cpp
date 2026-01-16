@@ -148,15 +148,19 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
             WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, &archivePathUtf8[0], size, nullptr, nullptr);
         }
         
-        // Open archive
-        struct archive *a = archive_read_new();
-        archive_read_support_filter_all(a);
-        archive_read_support_format_all(a);
+        // Open archive using RAII for automatic cleanup
+        struct archive* raw_a = archive_read_new();
+        auto archive_deleter = [](struct archive* ptr) { 
+            if (ptr) archive_read_free(ptr); 
+        };
+        std::unique_ptr<struct archive, decltype(archive_deleter)> a(raw_a, archive_deleter);
+
+        archive_read_support_filter_all(a.get());
+        archive_read_support_format_all(a.get());
         
-        int r = archive_read_open_filename(a, archivePathUtf8.c_str(), 10240);
+        int r = archive_read_open_filename(a.get(), archivePathUtf8.c_str(), 10240);
         if (r != ARCHIVE_OK)
         {
-            archive_read_free(a);
             if (callback) callback->OnError(ErrorCode::ArchiveNotFound, L"Failed to open archive");
             return;
         }
@@ -168,7 +172,7 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         int fileIndex = 0;
         uint64_t totalExtracted = 0;
         
-        while (archive_read_next_header(a, &entry) == ARCHIVE_OK && !m_cancelled)
+        while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK && !m_cancelled)
         {
             // Get entry path and convert to wide string
             const char* entryPath = archive_entry_pathname(entry);
@@ -208,13 +212,13 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
                 }
                 
                 const void* buff;
-                size_t size;
+                size_t blockSize;
                 int64_t offset;
                 
-                while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK)
+                while (archive_read_data_block(a.get(), &buff, &blockSize, &offset) == ARCHIVE_OK)
                 {
-                    outFile.write(static_cast<const char*>(buff), size);
-                    totalExtracted += size;
+                    outFile.write(static_cast<const char*>(buff), blockSize);
+                    totalExtracted += blockSize;
                     
                     // Update progress
                     int progress = info.totalSize > 0 ? 
@@ -232,7 +236,7 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
             fileIndex++;
         }
         
-        archive_read_free(a);
+        // archive_read_free is called automatically by unique_ptr
         
         if (m_cancelled)
         {
