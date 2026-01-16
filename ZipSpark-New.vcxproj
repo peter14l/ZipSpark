@@ -139,6 +139,8 @@
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\ErrorHandler.h" />
     <ClInclude Include="Utils\Settings.h" />
+    <ClInclude Include="Utils\NotificationManager.h" />
+    <ClInclude Include="Utils\RecentFiles.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -162,6 +164,8 @@
       <DependentUpon>PreferencesWindow.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Utils\Settings.cpp" />
+    <ClCompile Include="Utils\NotificationManager.cpp" />
+    <ClCompile Include="Utils\RecentFiles.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
   </ItemGroup>
   <ItemGroup>
