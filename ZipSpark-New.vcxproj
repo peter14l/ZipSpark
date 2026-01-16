@@ -34,6 +34,8 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
     <UseWinUI>true</UseWinUI>
+    <!-- Default VCPKG_ROOT if not set -->
+    <VCPKG_ROOT Condition="'$(VCPKG_ROOT)' == ''">$(USERPROFILE)\vcpkg</VCPKG_ROOT>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
