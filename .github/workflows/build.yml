@@ -26,6 +26,16 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+
+    - name: Install libarchive
+      run: |
+        vcpkg install libarchive:x64-windows
+        vcpkg integrate install
+
     - name: Restore NuGet packages
       run: nuget restore packages.config -PackagesDirectory packages
 

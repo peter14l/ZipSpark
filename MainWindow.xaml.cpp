@@ -21,7 +21,9 @@
 #include <microsoft.ui.xaml.window.h>
 #include <Shobjidl.h>
 #include <thread>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
 using namespace Microsoft::UI::Xaml::Controls;
