@@ -87,12 +87,13 @@ jobs:
 
     - name: Build project
       run: |
+        $vcpkgToolchain = "$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
         if ("${{ matrix.configuration }}" -eq "Release" -and (Test-Path "ZipSpark_TemporaryKey.pfx")) {
           Write-Host "Building with certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /p:VcpkgEnabled=true /p:VcpkgConfiguration=Release /p:VcpkgTriplet=x64-windows /m /v:minimal
         } else {
           Write-Host "Building without certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:VcpkgEnabled=true /p:VcpkgConfiguration=${{ matrix.configuration }} /p:VcpkgTriplet=x64-windows /m /v:minimal
         }
 
     - name: Upload MSIX package
