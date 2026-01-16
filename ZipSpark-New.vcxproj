@@ -216,6 +216,21 @@
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>
+  
+  <!-- Copy libarchive DLLs to output directory -->
+  <Target Name="CopyVcpkgDlls" AfterTargets="Build">
+    <ItemGroup>
+      <VcpkgDlls Include="$(VCPKG_ROOT)\installed\x64-windows\bin\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(VcpkgDlls)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+  
+  <!-- Include DLLs in MSIX package -->
+  <ItemGroup>
+    <Content Include="$(VCPKG_ROOT)\installed\x64-windows\bin\archive.dll" Condition="Exists('$(VCPKG_ROOT)\installed\x64-windows\bin\archive.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\Microsoft.Web.WebView2.1.0.3179.45\build\native\Microsoft.Web.WebView2.targets" Condition="Exists('packages\Microsoft.Web.WebView2.1.0.3179.45\build\native\Microsoft.Web.WebView2.targets')" />
