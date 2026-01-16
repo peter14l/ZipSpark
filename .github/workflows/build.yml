@@ -116,16 +116,15 @@ jobs:
         Write-Host "Files in include dir:"
         Get-ChildItem $vcpkgInclude -ErrorAction SilentlyContinue | Select-Object -First 10
         
-        # Set environment variables for compiler
-        $env:INCLUDE = "$vcpkgInclude;$env:INCLUDE"
-        $env:LIB = "$vcpkgLib;$env:LIB"
+        # Set VCPKG_ROOT for vcxproj to use
+        $env:VCPKG_ROOT = $vcpkgRoot
         
         if ("${{ matrix.configuration }}" -eq "Release" -and (Test-Path "ZipSpark_TemporaryKey.pfx")) {
           Write-Host "Building with certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" "/p:IncludePath=$vcpkgInclude;%(IncludePath)" "/p:LibraryPath=$vcpkgLib;%(LibraryPath)" /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /m /v:minimal
         } else {
           Write-Host "Building without certificate signing..."
-          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true "/p:IncludePath=$vcpkgInclude;%(IncludePath)" "/p:LibraryPath=$vcpkgLib;%(LibraryPath)" /m /v:minimal
+          msbuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /m /v:minimal
         }
 
     - name: Upload MSIX package
