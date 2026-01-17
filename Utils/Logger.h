@@ -50,7 +50,52 @@ namespace ZipSpark
             try
             {
                 // Create log directory if it doesn't exist
-                std::filesystem::create_directories(logDirectory);
+                std::error_code ec;
+                std::filesystem::create_directories(logDirectory, ec);
+                
+                if (ec)
+                {
+                    // Directory creation failed, try temp directory
+                    wchar_t tempPath[MAX_PATH];
+                    GetTempPathW(MAX_PATH, tempPath);
+                    std::wstring tempDir = std::wstring(tempPath) + L"ZipSpark\\Logs";
+                    std::filesystem::create_directories(tempDir, ec);
+                    
+                    if (ec)
+                    {
+                        // Can't create any directory, logging disabled
+                        m_isInitialized = false;
+                        return;
+                    }
+                    
+                    // Use temp directory instead
+                    auto now = std::chrono::system_clock::now();
+                    auto time = std::chrono::system_clock::to_time_t(now);
+                    std::tm tm;
+                    localtime_s(&tm, &time);
+
+                    std::wstringstream filename;
+                    filename << tempDir << L"\\ZipSpark_"
+                        << std::put_time(&tm, L"%Y%m%d_%H%M%S")
+                        << L".log";
+
+                    m_logFilePath = filename.str();
+                    m_logFile.open(m_logFilePath, std::ios::out | std::ios::app);
+                    
+                    if (m_logFile.is_open())
+                    {
+                        m_isInitialized = true;
+                        // Write initial log entry
+                        auto logNow = std::chrono::system_clock::now();
+                        auto logTime = std::chrono::system_clock::to_time_t(logNow);
+                        std::tm logTm;
+                        localtime_s(&logTm, &logTime);
+                        m_logFile << L"[" << std::put_time(&logTm, L"%Y-%m-%d %H:%M:%S") << L"] "
+                                  << L"[WARN] Logger initialized at temp location (AppData failed): " << m_logFilePath << L"\n";
+                        m_logFile.flush();
+                    }
+                    return;
+                }
 
                 // Generate timestamped log file name
                 auto now = std::chrono::system_clock::now();
@@ -65,41 +110,24 @@ namespace ZipSpark
 
                 m_logFilePath = filename.str();
                 m_logFile.open(m_logFilePath, std::ios::out | std::ios::app);
-                m_isInitialized = true;
-
-                Log(LogLevel::Info, L"Logger initialized at: " + m_logFilePath);
+                
+                if (m_logFile.is_open())
+                {
+                    m_isInitialized = true;
+                    // Write initial log entry
+                    auto logNow = std::chrono::system_clock::now();
+                    auto logTime = std::chrono::system_clock::to_time_t(logNow);
+                    std::tm logTm;
+                    localtime_s(&logTm, &logTime);
+                    m_logFile << L"[" << std::put_time(&logTm, L"%Y-%m-%d %H:%M:%S") << L"] "
+                              << L"[INFO] Logger initialized at: " << m_logFilePath << L"\n";
+                    m_logFile.flush();
+                }
             }
             catch (...)
             {
-                // If initialization fails, try temp directory
-                try
-                {
-                    wchar_t tempPath[MAX_PATH];
-                    GetTempPathW(MAX_PATH, tempPath);
-                    std::wstring tempDir = std::wstring(tempPath) + L"ZipSpark\\Logs";
-                    std::filesystem::create_directories(tempDir);
-                    
-                    auto now = std::chrono::system_clock::now();
-                    auto time = std::chrono::system_clock::to_time_t(now);
-                    std::tm tm;
-                    localtime_s(&tm, &time);
-
-                    std::wstringstream filename;
-                    filename << tempDir << L"\\ZipSpark_"
-                        << std::put_time(&tm, L"%Y%m%d_%H%M%S")
-                        << L".log";
-
-                    m_logFilePath = filename.str();
-                    m_logFile.open(m_logFilePath, std::ios::out | std::ios::app);
-                    m_isInitialized = true;
-                    
-                    Log(LogLevel::Warning, L"Logger initialized at temp location: " + m_logFilePath);
-                }
-                catch (...)
-                {
-                    // Complete failure - logging disabled
-                    m_isInitialized = false;
-                }
+                // Complete failure - logging disabled
+                m_isInitialized = false;
             }
         }
 
@@ -116,7 +144,7 @@ namespace ZipSpark
         /// </summary>
         void Log(LogLevel level, const std::wstring& message)
         {
-            // Auto-initialize if not initialized
+            // Auto-initialize if not initialized (without holding the lock)
             if (!m_isInitialized)
             {
                 // Get AppData local path
@@ -134,6 +162,12 @@ namespace ZipSpark
                     GetTempPathW(MAX_PATH, tempPath);
                     std::wstring logDir = std::wstring(tempPath) + L"ZipSpark\\Logs";
                     Initialize(logDir);
+                }
+                
+                // If still not initialized after trying, give up
+                if (!m_isInitialized)
+                {
+                    return;
                 }
             }
 
