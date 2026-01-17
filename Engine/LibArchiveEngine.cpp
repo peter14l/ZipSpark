@@ -144,7 +144,8 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         int size = WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
         if (size > 0)
         {
-            archivePathUtf8.resize(size);
+            // Resize to size-1 because size includes null terminator, but resize doesn't need it
+            archivePathUtf8.resize(size - 1);
             WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, &archivePathUtf8[0], size, nullptr, nullptr);
         }
         
@@ -180,7 +181,8 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
             std::wstring entryPathW;
             if (wsize > 0)
             {
-                entryPathW.resize(wsize);
+                // Resize to wsize-1 because wsize includes null terminator, but resize doesn't need it
+                entryPathW.resize(wsize - 1);
                 MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, &entryPathW[0], wsize);
             }
             

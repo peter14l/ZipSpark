@@ -77,38 +77,53 @@ namespace winrt::ZipSpark_New::implementation
 
     winrt::fire_and_forget MainWindow::ExtractButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
-        // Show file picker to select archive
-        auto picker = winrt::Windows::Storage::Pickers::FileOpenPicker();
-        
-        // Initialize with window handle
-        auto initializeWithWindow = picker.as<::IInitializeWithWindow>();
-        auto windowNative = this->try_as<::IWindowNative>();
-        HWND hwnd;
-        windowNative->get_WindowHandle(&hwnd);
-        initializeWithWindow->Initialize(hwnd);
-        
-        // Set file type filters
-        picker.FileTypeFilter().Append(L".zip");
-        picker.FileTypeFilter().Append(L".7z");
-        picker.FileTypeFilter().Append(L".rar");
-        picker.FileTypeFilter().Append(L".tar");
-        picker.FileTypeFilter().Append(L".gz");
-        picker.FileTypeFilter().Append(L".tgz");
-        picker.FileTypeFilter().Append(L".txz");
-        picker.FileTypeFilter().Append(L".xz");
-        
-        picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::Downloads);
-        
-        // Show picker
-        auto file = co_await picker.PickSingleFileAsync();
-        if (file)
+        try
         {
-            std::wstring path = file.Path().c_str();
+            // Show file picker to select archive
+            auto picker = winrt::Windows::Storage::Pickers::FileOpenPicker();
             
-            // Add to recent files
-            ZipSpark::RecentFiles::GetInstance().AddFile(path);
+            // Initialize with window handle
+            auto initializeWithWindow = picker.as<::IInitializeWithWindow>();
+            auto windowNative = this->try_as<::IWindowNative>();
+            HWND hwnd;
+            windowNative->get_WindowHandle(&hwnd);
+            initializeWithWindow->Initialize(hwnd);
             
-            StartExtraction(path);
+            // Set file type filters
+            picker.FileTypeFilter().Append(L".zip");
+            picker.FileTypeFilter().Append(L".7z");
+            picker.FileTypeFilter().Append(L".rar");
+            picker.FileTypeFilter().Append(L".tar");
+            picker.FileTypeFilter().Append(L".gz");
+            picker.FileTypeFilter().Append(L".tgz");
+            picker.FileTypeFilter().Append(L".txz");
+            picker.FileTypeFilter().Append(L".xz");
+            
+            picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::Downloads);
+            
+            // Show picker
+            auto file = co_await picker.PickSingleFileAsync();
+            if (file)
+            {
+                std::wstring path = file.Path().c_str();
+                
+                // Add to recent files
+                ZipSpark::RecentFiles::GetInstance().AddFile(path);
+                
+                StartExtraction(path);
+            }
+        }
+        catch (const std::exception& ex)
+        {
+            std::string what = ex.what();
+            std::wstring wwhat(what.begin(), what.end());
+            LOG_ERROR(L"Error in ExtractButton_Click: " + wwhat);
+            ShowErrorDialog(L"Error", L"Failed to open file picker: " + wwhat);
+        }
+        catch (...)
+        {
+            LOG_ERROR(L"Unknown error in ExtractButton_Click");
+            ShowErrorDialog(L"Error", L"An unexpected error occurred while opening the file picker.");
         }
     }
 
@@ -235,14 +250,34 @@ namespace winrt::ZipSpark_New::implementation
                 
                 strong_this->m_extracting = false;
             }
+            catch (const winrt::hresult_error& ex)
+            {
+                // WinRT-specific errors
+                std::wstring message = ex.message().c_str();
+                LOG_ERROR(L"WinRT error in StartExtraction: " + message);
+                strong_this->m_extracting = false;
+                strong_this->DispatcherQueue().TryEnqueue([strong_this, message]() {
+                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"WinRT Error: " + message);
+                });
+            }
+            catch (const std::exception& ex)
+            {
+                // Standard C++ exceptions
+                std::string what = ex.what();
+                std::wstring wwhat(what.begin(), what.end());
+                LOG_ERROR(L"Exception in StartExtraction: " + wwhat);
+                strong_this->m_extracting = false;
+                strong_this->DispatcherQueue().TryEnqueue([strong_this, wwhat]() {
+                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Error: " + wwhat);
+                });
+            }
             catch (...)
             {
-                // Catch ALMOST globally for this thread
-                LOG_ERROR(L"Catastrophic failure in StartExtraction async block");
-                strong_this->m_extracting = false; 
-                // Try to notify UI if possible
+                // Catch all other exceptions
+                LOG_ERROR(L"Unknown exception in StartExtraction async block");
+                strong_this->m_extracting = false;
                 strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                     strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Internal Application Error");
+                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"An unexpected error occurred during extraction.");
                 });
             }
         }();
@@ -291,24 +326,38 @@ namespace winrt::ZipSpark_New::implementation
         }
     }
 
-    void MainWindow::Grid_Drop(IInspectable const&, DragEventArgs const& e)
+    winrt::fire_and_forget MainWindow::Grid_Drop(IInspectable const&, DragEventArgs const& e)
     {
-        // Get dropped files
-        if (e.DataView().Contains(winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::StorageItems()))
+        try
         {
-            auto items = e.DataView().GetStorageItemsAsync().get();
-            if (items.Size() > 0)
+            // Get dropped files
+            if (e.DataView().Contains(winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::StorageItems()))
             {
-                auto file = items.GetAt(0).try_as<winrt::Windows::Storage::StorageFile>();
-                if (file)
+                // Use co_await instead of .get() to avoid blocking UI thread
+                auto items = co_await e.DataView().GetStorageItemsAsync();
+                if (items.Size() > 0)
                 {
-                    std::wstring path = file.Path().c_str();
-                    LOG_INFO(L"File dropped: " + path);
-                    
-                    // Start extraction
-                    StartExtraction(path);
+                    auto file = items.GetAt(0).try_as<winrt::Windows::Storage::StorageFile>();
+                    if (file)
+                    {
+                        std::wstring path = file.Path().c_str();
+                        LOG_INFO(L"File dropped: " + path);
+                        
+                        // Start extraction
+                        StartExtraction(path);
+                    }
                 }
             }
+        }
+        catch (const std::exception& ex)
+        {
+            std::string what = ex.what();
+            std::wstring wwhat(what.begin(), what.end());
+            LOG_ERROR(L"Error in Grid_Drop: " + wwhat);
+        }
+        catch (...)
+        {
+            LOG_ERROR(L"Unknown error in Grid_Drop");
         }
     }
 
