@@ -215,7 +215,6 @@ namespace winrt::ZipSpark_New::implementation
             strong_this->m_extracting = false;
         }();
     }
-    }
 
     void MainWindow::CancelButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
