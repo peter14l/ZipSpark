@@ -204,8 +204,9 @@ namespace winrt::ZipSpark_New::implementation
             }
             catch (const std::exception& e)
             {
-                winrt::hstring msg = winrt::to_hstring(e.what());
-                LOG_ERROR(L"Extraction exception: " + std::wstring(msg.c_str()));
+                std::string what = e.what();
+                std::wstring wwhat(what.begin(), what.end());
+                LOG_ERROR(L"Extraction exception: " + wwhat);
                 strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
                     strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
                 });
@@ -213,27 +214,7 @@ namespace winrt::ZipSpark_New::implementation
             
             strong_this->m_extracting = false;
         }();
-            
-            // Set extraction options
-            ZipSpark::ExtractionOptions options;
-            options.createSubfolder = !info.hasSingleRoot;
-            options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
-            
-            try
-            {
-                m_engine->Extract(info, options, this);
-            }
-            catch (const std::exception& e)
-            {
-                winrt::hstring msg = winrt::to_hstring(e.what());
-                LOG_ERROR(L"Extraction exception: " + std::wstring(msg.c_str()));
-                DispatcherQueue().TryEnqueue([this]() {
-                    OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
-                });
-            }
-            
-            m_extracting = false;
-        }();
+    }
     }
 
     void MainWindow::CancelButton_Click(IInspectable const&, RoutedEventArgs const&)
