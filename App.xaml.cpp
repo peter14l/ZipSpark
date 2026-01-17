@@ -17,10 +17,15 @@ namespace winrt::ZipSpark_New::implementation
     /// </summary>
     App::App()
     {
+        // EMERGENCY DEBUG: Show message box to confirm app starts
+        MessageBoxW(nullptr, L"App constructor started", L"ZipSpark Debug", MB_OK);
+        
         try
         {
             LOG_INFO(L"=== ZipSpark Application Starting ===");
             LOG_INFO(L"App constructor called");
+            
+            MessageBoxW(nullptr, L"After first LOG_INFO", L"ZipSpark Debug", MB_OK);
             
             // Xaml objects should not call InitializeComponent during construction.
             // See https://github.com/microsoft/cppwinrt/tree/master/nuget#initializecomponent
@@ -30,6 +35,8 @@ namespace winrt::ZipSpark_New::implementation
             {
                 auto errorMessage = e.Message();
                 LOG_ERROR(L"Unhandled exception in App: " + std::wstring(errorMessage));
+                
+                MessageBoxW(nullptr, errorMessage.c_str(), L"Unhandled Exception", MB_OK | MB_ICONERROR);
                 
                 if (IsDebuggerPresent())
                 {
@@ -41,20 +48,36 @@ namespace winrt::ZipSpark_New::implementation
             {
                 auto errorMessage = e.Message();
                 LOG_ERROR(L"Unhandled exception in App (Release): " + std::wstring(errorMessage));
+                
+                MessageBoxW(nullptr, errorMessage.c_str(), L"Unhandled Exception (Release)", MB_OK | MB_ICONERROR);
             });
 #endif
             
+            MessageBoxW(nullptr, L"App constructor completed successfully", L"ZipSpark Debug", MB_OK);
             LOG_INFO(L"App constructor completed successfully");
+        }
+        catch (const winrt::hresult_error& ex)
+        {
+            std::wstring message = ex.message().c_str();
+            std::wstring fullMsg = L"WinRT error in App constructor: " + message + L"\nHRESULT: " + std::to_wstring(ex.code());
+            MessageBoxW(nullptr, fullMsg.c_str(), L"App Constructor Error", MB_OK | MB_ICONERROR);
+            LOG_ERROR(fullMsg);
+            throw;
         }
         catch (const std::exception& ex)
         {
             std::string what = ex.what();
             std::wstring wwhat(what.begin(), what.end());
-            LOG_ERROR(L"Exception in App constructor: " + wwhat);
+            std::wstring fullMsg = L"Exception in App constructor: " + wwhat;
+            MessageBoxW(nullptr, fullMsg.c_str(), L"App Constructor Error", MB_OK | MB_ICONERROR);
+            LOG_ERROR(fullMsg);
+            throw;
         }
         catch (...)
         {
+            MessageBoxW(nullptr, L"Unknown exception in App constructor", L"App Constructor Error", MB_OK | MB_ICONERROR);
             LOG_ERROR(L"Unknown exception in App constructor");
+            throw;
         }
     }
 
