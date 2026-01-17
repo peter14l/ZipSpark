@@ -142,19 +142,21 @@ namespace winrt::ZipSpark_New::implementation
         FileProgressBar().IsIndeterminate(true);
         
         // Start extraction on background thread using WinRT async pattern
-        [this, archivePath]() -> winrt::fire_and_forget
+        // Capture a strong reference to keep the object alive
+        auto strong_this = get_strong();
+        [strong_this, archivePath]() -> winrt::fire_and_forget
         {
             // Switch to background thread
             co_await winrt::resume_background();
             
             // Create extraction engine
-            m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
-            if (!m_engine)
+            strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
+            if (!strong_this->m_engine)
             {
-                DispatcherQueue().TryEnqueue([this]() {
-                    OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format");
+                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                    strong_this->OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format");
                 });
-                m_extracting = false;
+                strong_this->m_extracting = false;
                 co_return;
             }
             
@@ -162,33 +164,55 @@ namespace winrt::ZipSpark_New::implementation
             ZipSpark::ArchiveInfo info;
             try 
             {
-                info = m_engine->GetArchiveInfo(archivePath);
+                info = strong_this->m_engine->GetArchiveInfo(archivePath);
             }
             catch (...)
             {
-                DispatcherQueue().TryEnqueue([this]() {
-                    OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
+                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                    strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
                 });
-                m_extracting = false;
+                strong_this->m_extracting = false;
                 co_return;
             }
             
             // Update UI with archive info
-            DispatcherQueue().TryEnqueue([this, info]() {
+            strong_this->DispatcherQueue().TryEnqueue([strong_this, info]() {
                 // Hide empty state elements
-                DropZoneTitle().Visibility(Visibility::Collapsed);
-                SupportedFormatsPanel().Visibility(Visibility::Collapsed);
-                BrowseButton().Visibility(Visibility::Collapsed);
+                strong_this->DropZoneTitle().Visibility(Visibility::Collapsed);
+                strong_this->SupportedFormatsPanel().Visibility(Visibility::Collapsed);
+                strong_this->BrowseButton().Visibility(Visibility::Collapsed);
                 
                 // Show archive info
-                ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
-                ArchivePathText().Visibility(Visibility::Visible);
+                strong_this->ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
+                strong_this->ArchivePathText().Visibility(Visibility::Visible);
                 
                 std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
                 std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
-                ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
-                ArchiveInfoText().Visibility(Visibility::Visible);
+                strong_this->ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
+                strong_this->ArchiveInfoText().Visibility(Visibility::Visible);
             });
+            
+            // Set extraction options
+            ZipSpark::ExtractionOptions options;
+            options.createSubfolder = !info.hasSingleRoot;
+            options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
+            
+            try
+            {
+                // Pass raw pointer to engine since stronger_this keeps it alive
+                strong_this->m_engine->Extract(info, options, strong_this.get());
+            }
+            catch (const std::exception& e)
+            {
+                winrt::hstring msg = winrt::to_hstring(e.what());
+                LOG_ERROR(L"Extraction exception: " + std::wstring(msg.c_str()));
+                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
+                });
+            }
+            
+            strong_this->m_extracting = false;
+        }();
             
             // Set extraction options
             ZipSpark::ExtractionOptions options;
@@ -350,10 +374,10 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes)
     {
-        // Throttle updates to ~30fps (33ms) to prevent UI thread starvation
+        // Throttle updates to ~10fps (100ms) to prevent UI thread starvation
         auto now = std::chrono::steady_clock::now();
         if (percentComplete < 100 && 
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastUIUpdate).count() < 33)
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastUIUpdate).count() < 100)
         {
             return;
         }
@@ -375,10 +399,10 @@ namespace winrt::ZipSpark_New::implementation
     {
         m_currentFileIndex = fileIndex;
         
-        // Throttle file progress updates too
+        // Throttle file progress updates too (100ms)
         auto now = std::chrono::steady_clock::now();
         if (fileIndex < totalFiles && 
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUIUpdate).count() < 33)
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUIUpdate).count() < 100)
         {
             return;
         }
