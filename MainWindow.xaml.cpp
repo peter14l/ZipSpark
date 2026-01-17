@@ -506,6 +506,15 @@ namespace winrt::ZipSpark_New::implementation
                 std::to_wstring(static_cast<int>(mbProcessed)) + L" MB / " +
                 std::to_wstring(static_cast<int>(mbTotal)) + L" MB"
             ));
+
+            // Update taskbar progress (Safe here on UI thread)
+            auto windowNative = this->try_as<::IWindowNative>();
+            if (windowNative)
+            {
+                HWND hwnd;
+                windowNative->get_WindowHandle(&hwnd);
+                ZipSpark::NotificationManager::GetInstance().UpdateTaskbarProgress(hwnd, percent, 100);
+            }
         });
     }
 
@@ -541,15 +550,6 @@ namespace winrt::ZipSpark_New::implementation
         m_lastUIUpdate = now;
 
         UpdateProgressUI(percentComplete, bytesProcessed, totalBytes);
-        
-        // Update taskbar progress
-        auto windowNative = this->try_as<::IWindowNative>();
-        if (windowNative)
-        {
-            HWND hwnd;
-            windowNative->get_WindowHandle(&hwnd);
-            ZipSpark::NotificationManager::GetInstance().UpdateTaskbarProgress(hwnd, percentComplete, 100);
-        }
     }
 
     void MainWindow::OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles)
@@ -583,21 +583,36 @@ namespace winrt::ZipSpark_New::implementation
     {
         LOG_INFO(L"Extraction completed: " + destination);
         
-        // Show notification
-        fs::path archivePath(m_archivePath);
-        ZipSpark::NotificationManager::GetInstance().ShowExtractionComplete(
-            archivePath.filename().wstring(), 
-            destination
-        );
-        
-        // Reset taskbar progress
-        auto windowNative = this->try_as<::IWindowNative>();
-        if (windowNative)
-        {
-            HWND hwnd;
-            windowNative->get_WindowHandle(&hwnd);
-            ZipSpark::NotificationManager::GetInstance().SetTaskbarState(hwnd, 0); // TBPF_NOPROGRESS
-        }
+        // Dispatch UI updates and notification to UI thread
+        DispatcherQueue().TryEnqueue([this, destination]() {
+            // Show notification
+            fs::path archivePath(m_archivePath);
+            ZipSpark::NotificationManager::GetInstance().ShowExtractionComplete(
+                archivePath.filename().wstring(), 
+                destination
+            );
+            
+            // Reset taskbar progress
+            auto windowNative = this->try_as<::IWindowNative>();
+            if (windowNative)
+            {
+                HWND hwnd;
+                windowNative->get_WindowHandle(&hwnd);
+                ZipSpark::NotificationManager::GetInstance().SetTaskbarState(hwnd, 0); // TBPF_NOPROGRESS
+            }
+            
+            HideExtractionProgress();
+            m_extracting = false;
+            
+            // Reset to empty state
+            DropZoneTitle().Visibility(Visibility::Visible);
+            SupportedFormatsPanel().Visibility(Visibility::Visible);
+            BrowseButton().Visibility(Visibility::Visible);
+            ArchivePathText().Text(L"");
+            ArchivePathText().Visibility(Visibility::Collapsed);
+            ArchiveInfoText().Visibility(Visibility::Collapsed);
+        });
+    }
         
         DispatcherQueue().TryEnqueue([this, destination]() {
             // Update progress to 100%
