@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <chrono>
 #include <mutex>
+#include <shlobj.h> // For SHGetKnownFolderPath
 
 namespace ZipSpark
 {
@@ -44,24 +45,70 @@ namespace ZipSpark
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             
-            // Create log directory if it doesn't exist
-            std::filesystem::create_directories(logDirectory);
+            if (m_isInitialized) return; // Already initialized
+            
+            try
+            {
+                // Create log directory if it doesn't exist
+                std::filesystem::create_directories(logDirectory);
 
-            // Generate timestamped log file name
-            auto now = std::chrono::system_clock::now();
-            auto time = std::chrono::system_clock::to_time_t(now);
-            std::tm tm;
-            localtime_s(&tm, &time);
+                // Generate timestamped log file name
+                auto now = std::chrono::system_clock::now();
+                auto time = std::chrono::system_clock::to_time_t(now);
+                std::tm tm;
+                localtime_s(&tm, &time);
 
-            std::wstringstream filename;
-            filename << logDirectory << L"\\ZipSpark_"
-                << std::put_time(&tm, L"%Y%m%d_%H%M%S")
-                << L".log";
+                std::wstringstream filename;
+                filename << logDirectory << L"\\ZipSpark_"
+                    << std::put_time(&tm, L"%Y%m%d_%H%M%S")
+                    << L".log";
 
-            m_logFile.open(filename.str(), std::ios::out | std::ios::app);
-            m_isInitialized = true;
+                m_logFilePath = filename.str();
+                m_logFile.open(m_logFilePath, std::ios::out | std::ios::app);
+                m_isInitialized = true;
 
-            Log(LogLevel::Info, L"Logger initialized");
+                Log(LogLevel::Info, L"Logger initialized at: " + m_logFilePath);
+            }
+            catch (...)
+            {
+                // If initialization fails, try temp directory
+                try
+                {
+                    wchar_t tempPath[MAX_PATH];
+                    GetTempPathW(MAX_PATH, tempPath);
+                    std::wstring tempDir = std::wstring(tempPath) + L"ZipSpark\\Logs";
+                    std::filesystem::create_directories(tempDir);
+                    
+                    auto now = std::chrono::system_clock::now();
+                    auto time = std::chrono::system_clock::to_time_t(now);
+                    std::tm tm;
+                    localtime_s(&tm, &time);
+
+                    std::wstringstream filename;
+                    filename << tempDir << L"\\ZipSpark_"
+                        << std::put_time(&tm, L"%Y%m%d_%H%M%S")
+                        << L".log";
+
+                    m_logFilePath = filename.str();
+                    m_logFile.open(m_logFilePath, std::ios::out | std::ios::app);
+                    m_isInitialized = true;
+                    
+                    Log(LogLevel::Warning, L"Logger initialized at temp location: " + m_logFilePath);
+                }
+                catch (...)
+                {
+                    // Complete failure - logging disabled
+                    m_isInitialized = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the path to the current log file
+        /// </summary>
+        std::wstring GetLogFilePath() const
+        {
+            return m_logFilePath;
         }
 
         /// <summary>
@@ -69,7 +116,26 @@ namespace ZipSpark
         /// </summary>
         void Log(LogLevel level, const std::wstring& message)
         {
-            if (!m_isInitialized) return;
+            // Auto-initialize if not initialized
+            if (!m_isInitialized)
+            {
+                // Get AppData local path
+                wchar_t* localAppData = nullptr;
+                if (SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &localAppData) == S_OK)
+                {
+                    std::wstring logDir = std::wstring(localAppData) + L"\\ZipSpark\\Logs";
+                    CoTaskMemFree(localAppData);
+                    Initialize(logDir);
+                }
+                else
+                {
+                    // Fallback to temp
+                    wchar_t tempPath[MAX_PATH];
+                    GetTempPathW(MAX_PATH, tempPath);
+                    std::wstring logDir = std::wstring(tempPath) + L"ZipSpark\\Logs";
+                    Initialize(logDir);
+                }
+            }
 
             std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -86,7 +152,7 @@ namespace ZipSpark
             if (m_logFile.is_open())
             {
                 m_logFile << logEntry.str();
-                m_logFile.flush();
+                m_logFile.flush(); // Immediate flush to ensure logs are written even if app crashes
             }
         }
 
@@ -149,6 +215,7 @@ namespace ZipSpark
         }
 
         std::wofstream m_logFile;
+        std::wstring m_logFilePath;
         std::mutex m_mutex;
         bool m_isInitialized = false;
     };
