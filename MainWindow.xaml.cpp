@@ -146,73 +146,105 @@ namespace winrt::ZipSpark_New::implementation
         auto strong_this = get_strong();
         [strong_this, archivePath]() -> winrt::fire_and_forget
         {
-            // Switch to background thread
-            co_await winrt::resume_background();
-            
-            // Create extraction engine
-            strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
-            if (!strong_this->m_engine)
+            try
             {
-                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                    strong_this->OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format");
+                // Switch to background thread
+                co_await winrt::resume_background();
+                
+                // Create extraction engine
+                try 
+                {
+                    strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
+                }
+                catch (...)
+                {
+                    strong_this->m_engine = nullptr;
+                }
+
+                if (!strong_this->m_engine)
+                {
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        strong_this->OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format or failed to initialize engine");
+                    });
+                    strong_this->m_extracting = false;
+                    co_return;
+                }
+                
+                // Get archive info
+                ZipSpark::ArchiveInfo info;
+                try 
+                {
+                    info = strong_this->m_engine->GetArchiveInfo(archivePath);
+                }
+                catch (...)
+                {
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
+                    });
+                    strong_this->m_extracting = false;
+                    co_return;
+                }
+                
+                // Update UI with archive info
+                strong_this->DispatcherQueue().TryEnqueue([strong_this, info]() {
+                    try
+                    {
+                        // Hide empty state elements
+                        strong_this->DropZoneTitle().Visibility(Visibility::Collapsed);
+                        strong_this->SupportedFormatsPanel().Visibility(Visibility::Collapsed);
+                        strong_this->BrowseButton().Visibility(Visibility::Collapsed);
+                        
+                        // Show archive info
+                        strong_this->ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
+                        strong_this->ArchivePathText().Visibility(Visibility::Visible);
+                        
+                        std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
+                        std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
+                        strong_this->ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
+                        strong_this->ArchiveInfoText().Visibility(Visibility::Visible);
+                    }
+                    catch(...) {} // Ignore UI update errors
                 });
+                
+                // Set extraction options
+                ZipSpark::ExtractionOptions options;
+                options.createSubfolder = !info.hasSingleRoot;
+                options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
+                
+                try
+                {
+                    // Pass raw pointer to engine since stronger_this keeps it alive
+                    strong_this->m_engine->Extract(info, options, strong_this.get());
+                }
+                catch (const std::exception& e)
+                {
+                    std::string what = e.what();
+                    std::wstring wwhat(what.begin(), what.end());
+                    LOG_ERROR(L"Extraction exception: " + wwhat);
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
+                    });
+                }
+                catch (...)
+                {
+                    LOG_ERROR(L"Unknown extraction exception");
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed (Unknown Error)");
+                    });
+                }
+                
                 strong_this->m_extracting = false;
-                co_return;
-            }
-            
-            // Get archive info
-            ZipSpark::ArchiveInfo info;
-            try 
-            {
-                info = strong_this->m_engine->GetArchiveInfo(archivePath);
             }
             catch (...)
             {
+                // Catch ALMOST globally for this thread
+                LOG_ERROR(L"Catastrophic failure in StartExtraction async block");
+                strong_this->m_extracting = false; 
+                // Try to notify UI if possible
                 strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                    strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
-                });
-                strong_this->m_extracting = false;
-                co_return;
-            }
-            
-            // Update UI with archive info
-            strong_this->DispatcherQueue().TryEnqueue([strong_this, info]() {
-                // Hide empty state elements
-                strong_this->DropZoneTitle().Visibility(Visibility::Collapsed);
-                strong_this->SupportedFormatsPanel().Visibility(Visibility::Collapsed);
-                strong_this->BrowseButton().Visibility(Visibility::Collapsed);
-                
-                // Show archive info
-                strong_this->ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
-                strong_this->ArchivePathText().Visibility(Visibility::Visible);
-                
-                std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
-                std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
-                strong_this->ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
-                strong_this->ArchiveInfoText().Visibility(Visibility::Visible);
-            });
-            
-            // Set extraction options
-            ZipSpark::ExtractionOptions options;
-            options.createSubfolder = !info.hasSingleRoot;
-            options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
-            
-            try
-            {
-                // Pass raw pointer to engine since stronger_this keeps it alive
-                strong_this->m_engine->Extract(info, options, strong_this.get());
-            }
-            catch (const std::exception& e)
-            {
-                std::string what = e.what();
-                std::wstring wwhat(what.begin(), what.end());
-                LOG_ERROR(L"Extraction exception: " + wwhat);
-                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
+                     strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Internal Application Error");
                 });
             }
-            
-            strong_this->m_extracting = false;
         }();
     }
 

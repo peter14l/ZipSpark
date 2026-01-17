@@ -257,6 +257,11 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         LOG_ERROR(L"Extraction failed: " + std::wstring(e.what(), e.what() + strlen(e.what())));
         if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Extraction error");
     }
+    catch (...)
+    {
+        LOG_ERROR(L"Extraction failed: Unknown exception");
+        if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Unknown extraction error");
+    }
 }
 
 void LibArchiveEngine::Cancel()
