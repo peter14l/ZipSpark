@@ -299,8 +299,10 @@ namespace winrt::ZipSpark_New::implementation
                 
                 try
                 {
-                    // Pass raw pointer to engine since stronger_this keeps it alive
-                    strong_this->m_engine->Extract(info, options, strong_this.get());
+                    // Use thread-safe callback wrapper to marshal all callbacks to UI thread
+                    // This prevents Access Violations when calling WinRT object methods from background thread
+                    ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this.get());
+                    strong_this->m_engine->Extract(info, options, &safeCallback);
                 }
                 catch (const std::exception& e)
                 {

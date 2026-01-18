@@ -30,6 +30,58 @@ namespace winrt::ZipSpark_New::implementation
         void OnError(ZipSpark::ErrorCode errorCode, const std::wstring& message) override;
 
     private:
+        // Thread-safe callback wrapper to marshal extraction callbacks to UI thread
+        class ThreadSafeCallback : public ZipSpark::IProgressCallback
+        {
+        private:
+            winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher;
+            ZipSpark::IProgressCallback* m_target;
+            
+        public:
+            ThreadSafeCallback(
+                winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher,
+                ZipSpark::IProgressCallback* target)
+                : m_dispatcher(dispatcher), m_target(target)
+            {
+            }
+            
+            void OnStart(int totalFiles) override
+            {
+                m_dispatcher.TryEnqueue([target = m_target, totalFiles]() {
+                    target->OnStart(totalFiles);
+                });
+            }
+            
+            void OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes) override
+            {
+                m_dispatcher.TryEnqueue([target = m_target, percentComplete, bytesProcessed, totalBytes]() {
+                    target->OnProgress(percentComplete, bytesProcessed, totalBytes);
+                });
+            }
+            
+            void OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles) override
+            {
+                m_dispatcher.TryEnqueue([target = m_target, currentFile, fileIndex, totalFiles]() {
+                    target->OnFileProgress(currentFile, fileIndex, totalFiles);
+                });
+            }
+            
+            void OnComplete(const std::wstring& destination) override
+            {
+                m_dispatcher.TryEnqueue([target = m_target, destination]() {
+                    target->OnComplete(destination);
+                });
+            }
+            
+            void OnError(ZipSpark::ErrorCode code, const std::wstring& message) override
+            {
+                m_dispatcher.TryEnqueue([target = m_target, code, message]() {
+                    target->OnError(code, message);
+                });
+            }
+        };
+
+    private:
         void SetupMicaBackdrop();
         void ShowExtractionProgress();
         void HideExtractionProgress();
