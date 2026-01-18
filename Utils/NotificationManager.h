@@ -4,6 +4,8 @@
 #include <map>
 #include <winrt/Windows.UI.Notifications.h>
 #include <winrt/Windows.Data.Xml.Dom.h>
+#include <ShObjIdl.h>
+#include <wrl/client.h>
 
 namespace ZipSpark {
 
@@ -40,11 +42,14 @@ public:
     /// Set taskbar state (normal, paused, error)
     /// </summary>
     void SetTaskbarState(HWND hwnd, int state);
-
+    
 private:
     NotificationManager() = default;
     NotificationManager(const NotificationManager&) = delete;
     NotificationManager& operator=(const NotificationManager&) = delete;
+
+    Microsoft::WRL::ComPtr<ITaskbarList3> m_taskbar;
+    void EnsureTaskbarInterface();
 };
 
 } // namespace ZipSpark

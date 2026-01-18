@@ -197,8 +197,45 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
                 continue;
             }
             
-            // Build full destination path
-            fs::path fullPath = destPath / entryPathW;
+            
+            // SECURITY CHECK: Prevent Zip Slip (Directory Traversal)
+            fs::path entryPathObj(entryPathW);
+            
+            // strict check: entry path should be relative and not contain ".."
+            // but for better compatibility, we resolve it.
+            
+            // 1. Force relative path
+            if (entryPathObj.is_absolute())
+            {
+                entryPathObj = entryPathObj.relative_path();
+            }
+            
+            // 2. Build full potential path
+            fs::path fullPath = destPath / entryPathObj;
+            
+            // 3. Verify it is still inside destPath
+            // Use weakly_canonical because the file doesn't exist yet
+            try 
+            {
+                fs::path canonicalDest = fs::weakly_canonical(destPath);
+                fs::path canonicalFull = fs::weakly_canonical(fullPath);
+                
+                std::wstring sDest = canonicalDest.wstring();
+                std::wstring sFull = canonicalFull.wstring();
+                
+                // Ensure sFull starts with sDest
+                if (sFull.length() < sDest.length() || 
+                    sFull.compare(0, sDest.length(), sDest) != 0)
+                {
+                    LOG_ERROR(L"Security Warning: Skipped file with invalid path (outside destination): " + entryPathW);
+                    continue;
+                }
+            }
+            catch (...)
+            {
+                LOG_ERROR(L"Error validating path: " + entryPathW);
+                continue;
+            }
             
             // Report file progress
             if (callback)

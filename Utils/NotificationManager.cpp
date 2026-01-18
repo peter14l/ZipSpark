@@ -66,14 +66,22 @@ void NotificationManager::ShowError(const std::wstring& title, const std::wstrin
     catch (...) {}
 }
 
+void NotificationManager::EnsureTaskbarInterface()
+{
+    if (!m_taskbar)
+    {
+        CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_taskbar));
+    }
+}
+
 void NotificationManager::UpdateTaskbarProgress(HWND hwnd, int progress, int total)
 {
     try
     {
-        ::Microsoft::WRL::ComPtr<ITaskbarList3> taskbar;
-        if (SUCCEEDED(CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar))))
+        EnsureTaskbarInterface();
+        if (m_taskbar)
         {
-            taskbar->SetProgressValue(hwnd, progress, total);
+            m_taskbar->SetProgressValue(hwnd, progress, total);
         }
     }
     catch (...) {}
@@ -83,10 +91,10 @@ void NotificationManager::SetTaskbarState(HWND hwnd, int state)
 {
     try
     {
-        ::Microsoft::WRL::ComPtr<ITaskbarList3> taskbar;
-        if (SUCCEEDED(CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar))))
+        EnsureTaskbarInterface();
+        if (m_taskbar)
         {
-            taskbar->SetProgressState(hwnd, (TBPFLAG)state);
+            m_taskbar->SetProgressState(hwnd, (TBPFLAG)state);
         }
     }
     catch (...) {}
