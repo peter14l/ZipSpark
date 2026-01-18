@@ -1,0 +1,110 @@
+name: Build ZipSpark (7-Zip Engine)
+
+on:
+  push:
+    branches: [ feature/sevenzip-engine ]
+  pull_request:
+    branches: [ feature/sevenzip-engine ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        configuration: [Release]
+        platform: [x64]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    - name: Setup vcpkg
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
+        .\vcpkg integrate install
+        cd ..
+
+    - name: Set vcpkg root
+      run: echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
+
+    - name: Install libarchive (Compile-time dependency)
+      run: |
+        .\vcpkg\vcpkg install libarchive:x64-windows-static
+        echo "Libarchive installed successfully"
+        
+    - name: Set vcpkg environment
+      run: |
+        echo "VCPKG_DEFAULT_TRIPLET=x64-windows-static" >> $env:GITHUB_ENV
+        echo "CMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+
+    - name: Setup 7-Zip Binaries
+      run: |
+        .\Setup-7Zip.ps1
+        if (-not (Test-Path "External\7-Zip\7z.exe")) {
+            Write-Error "7z.exe verification failed in CI!"
+            exit 1
+        }
+        echo "7-Zip binaries setup complete."
+
+    - name: Restore NuGet packages
+      run: nuget restore packages.config -PackagesDirectory packages
+
+    - name: Increment MSIX version
+      run: |
+        $manifestPath = "Package.appxmanifest"
+        [xml]$manifest = Get-Content $manifestPath
+        
+        $currentVersion = $manifest.Package.Identity.Version
+        $versionParts = $currentVersion.Split('.')
+        $major = [int]$versionParts[0]
+        $minor = [int]$versionParts[1]
+        
+        $newBuild = ${{ github.run_number }}
+        $newVersion = "$major.$minor.$newBuild.0"
+        
+        Write-Host "New version: $newVersion"
+        
+        $manifest.Package.Identity.Version = $newVersion
+        $manifest.Save($manifestPath)
+        
+        echo "VERSION=$newVersion" >> $env:GITHUB_ENV
+
+    - name: Decode certificate
+      if: matrix.configuration == 'Release'
+      run: |
+        if ("${{ secrets.CERTIFICATE_BASE64 }}" -ne "") {
+          $base64 = "${{ secrets.CERTIFICATE_BASE64 }}"
+          $bytes = [System.Convert]::FromBase64String($base64)
+          $certPath = Join-Path $env:GITHUB_WORKSPACE "ZipSpark_TemporaryKey.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, $bytes)
+          Write-Host "Certificate decoded to: $certPath"
+        } else {
+          Write-Host "WARNING: No certificate found in secrets"
+        }
+
+    - name: Build project
+      run: |
+        $vcpkgRoot = "$PWD\vcpkg"
+        $env:VCPKG_ROOT = $vcpkgRoot
+        
+        if (Test-Path "ZipSpark_TemporaryKey.pfx") {
+          MSBuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=ZipSpark_TemporaryKey.pfx /p:PackageCertificatePassword="${{ secrets.CERTIFICATE_PASSWORD }}" /m /v:normal
+        } else {
+          MSBuild ZipSpark-New.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxPackageDir=AppPackages\ /p:GenerateAppxPackageOnBuild=true /m /v:normal
+        }
+
+    - name: Upload MSIX package
+      uses: actions/upload-artifact@v4
+      with:
+        name: ZipSpark-7Zip-MSIX-${{ matrix.platform }}-v${{ env.VERSION }}
+        path: AppPackages/**/*.msix
