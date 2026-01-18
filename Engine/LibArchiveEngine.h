@@ -19,6 +19,9 @@ public:
     bool CanHandle(const std::wstring& archivePath) override;
     ArchiveInfo GetArchiveInfo(const std::wstring& archivePath) override;
     void Extract(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback) override;
+    
+private:
+    void ExtractInternal(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback);
     void Cancel() override;
     std::wstring GetEngineName() const override { return L"libarchive"; }
 

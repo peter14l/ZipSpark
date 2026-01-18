@@ -121,10 +121,46 @@ std::wstring LibArchiveEngine::DetermineDestination(const ArchiveInfo& info, con
     }
 }
 
+// Helper to sanitize filenames (remove invalid chars < > : " / \ | ? *)
+std::wstring SanitizePathComponent(const std::wstring& component)
+{
+    std::wstring sanitized = component;
+    const std::wstring invalidChars = L"<>:\"/\\|?*";
+    
+    for (auto& ch : sanitized)
+    {
+        if (invalidChars.find(ch) != std::wstring::npos || ch < 32)
+        {
+            ch = L'_';
+        }
+    }
+    return sanitized;
+}
+
 void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback)
 {
     m_cancelled = false;
     
+    // SEH WRAPPER: Catch "Hard Crashes" (Access Violations) preventing app termination
+    __try
+    {
+        ExtractInternal(info, options, callback);
+    }
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    {
+        DWORD code = GetExceptionCode();
+        std::wstring msg = L"CRITICAL ERROR: Access Violation (0x" + std::to_wstring(code) + L") caught in extraction engine.";
+        LOG_ERROR(msg);
+        
+        if (callback)
+        {
+            callback->OnError(ErrorCode::ExtractionFailed, L"System Memory Error (Access Violation). The archive may be corrupt or incompatible.");
+        }
+    }
+}
+
+void LibArchiveEngine::ExtractInternal(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback)
+{
     try
     {
         LOG_INFO(L"Starting extraction with libarchive: " + info.archivePath);
@@ -188,24 +224,30 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
                 continue;
             }
             
+            LOG_INFO(L"Processing entry: " + entryPathW); // Trace logging
             
             // SECURITY CHECK: Prevent Zip Slip (Directory Traversal)
+            // Sanitize path components to prevent invalid chars
             fs::path entryPathObj(entryPathW);
+            fs::path sanitizedEntryPath;
             
-            // strict check: entry path should be relative and not contain ".."
-            // but for better compatibility, we resolve it.
-            
-            // 1. Force relative path
-            if (entryPathObj.is_absolute())
+            for (const auto& component : entryPathObj)
             {
-                entryPathObj = entryPathObj.relative_path();
+                 // Don't sanitize separators (handled by fs::path iteration)
+                 // But do sanitize component names
+                 sanitizedEntryPath /= SanitizePathComponent(component.wstring());
+            }
+
+            // 1. Force relative path
+            if (sanitizedEntryPath.is_absolute())
+            {
+                sanitizedEntryPath = sanitizedEntryPath.relative_path();
             }
             
             // 2. Build full potential path
-            fs::path fullPath = destPath / entryPathObj;
+            fs::path fullPath = destPath / sanitizedEntryPath;
             
             // 3. Verify it is still inside destPath
-            // Use weakly_canonical because the file doesn't exist yet
             try 
             {
                 fs::path canonicalDest = fs::weakly_canonical(destPath);
@@ -290,6 +332,20 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
             callback->OnProgress(100, info.totalSize, info.totalSize);
             callback->OnComplete(destination);
         }
+    }
+    catch (const std::exception& e)
+    {
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Exception in ExtractInternal: " + wwhat);
+        if (callback) callback->OnError(ErrorCode::ExtractionFailed, wwhat);
+    }
+    catch (...)
+    {
+        LOG_ERROR(L"Unknown exception in ExtractInternal");
+        if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Unknown Error");
+    }
+}
         
         LOG_INFO(L"Extraction completed successfully");
     }
