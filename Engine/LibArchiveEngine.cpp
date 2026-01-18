@@ -137,25 +137,30 @@ std::wstring SanitizePathComponent(const std::wstring& component)
     return sanitized;
 }
 
+// Helper to log hard crashes (avoiding C2712 in Extract)
+void LogHardCrash(DWORD code, IProgressCallback* callback)
+{
+    std::wstring msg = L"CRITICAL ERROR: Access Violation (0x" + std::to_wstring(code) + L") caught in extraction engine.";
+    LOG_ERROR(msg);
+    if (callback)
+    {
+        callback->OnError(ErrorCode::ExtractionFailed, L"System Memory Error (Access Violation). The archive may be corrupt or incompatible.");
+    }
+}
+
 void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback)
 {
     m_cancelled = false;
     
     // SEH WRAPPER: Catch "Hard Crashes" (Access Violations) preventing app termination
+    // NOTE: This function must NOT contain any objects with destructors (C2712)
     __try
     {
         ExtractInternal(info, options, callback);
     }
     __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
     {
-        DWORD code = GetExceptionCode();
-        std::wstring msg = L"CRITICAL ERROR: Access Violation (0x" + std::to_wstring(code) + L") caught in extraction engine.";
-        LOG_ERROR(msg);
-        
-        if (callback)
-        {
-            callback->OnError(ErrorCode::ExtractionFailed, L"System Memory Error (Access Violation). The archive may be corrupt or incompatible.");
-        }
+        LogHardCrash(GetExceptionCode(), callback);
     }
 }
 
@@ -346,23 +351,6 @@ void LibArchiveEngine::ExtractInternal(const ArchiveInfo& info, const Extraction
         if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Unknown Error");
     }
 }
-        
-        LOG_INFO(L"Extraction completed successfully");
-    }
-    catch (const std::exception& e)
-    {
-        std::string what = e.what();
-        std::wstring wwhat(what.begin(), what.end());
-        LOG_ERROR(L"Extraction failed: " + wwhat);
-        if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Extraction error");
-    }
-    catch (...)
-    {
-        LOG_ERROR(L"Extraction failed: Unknown exception");
-        if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Unknown extraction error");
-    }
-}
-
 void LibArchiveEngine::Cancel()
 {
     m_cancelled = true;
