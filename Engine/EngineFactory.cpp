@@ -1,7 +1,4 @@
-#include "pch.h"
-#include "EngineFactory.h"
-#include "WindowsShellEngine.h"
-#include "LibArchiveEngine.h"
+#include "SevenZipEngine.h"
 #include "../Utils/Logger.h"
 #include <filesystem>
 #include <algorithm>
@@ -46,9 +43,8 @@ std::unique_ptr<IExtractionEngine> EngineFactory::CreateEngine(const std::wstrin
     case ArchiveFormat::TAR_GZ:
     case ArchiveFormat::TAR_XZ:
     case ArchiveFormat::XZ:
-        // Use libarchive for all formats (thread-safe with ThreadSafeCallback wrapper)
-        // WindowsShellEngine is deprecated due to threading issues (calls callbacks from background thread)
-        return std::make_unique<LibArchiveEngine>();
+        // Use 7-Zip process isolation for maximum stability and format support
+        return std::make_unique<SevenZipEngine>();
         
     default:
         LOG_ERROR(L"Unknown archive format: " + archivePath);
