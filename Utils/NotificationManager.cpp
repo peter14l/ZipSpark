@@ -37,7 +37,7 @@ void NotificationManager::ShowNotification(const std::wstring& title, const std:
     }
 }
 
-void NotificationManager::ShowExtractionComplete(const std::wstring& archiveName, const std::wstring& destination)
+void NotificationManager::ShowExtractionComplete(const std::wstring& /*archiveName*/, const std::wstring& destination)
 {
     std::wstring message = L"Extracted to: " + destination;
     ShowNotification(L"✓ Extraction Complete", message);
