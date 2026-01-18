@@ -39,9 +39,6 @@ std::unique_ptr<IExtractionEngine> EngineFactory::CreateEngine(const std::wstrin
     switch (format)
     {
     case ArchiveFormat::ZIP:
-        // Use Windows Shell for ZIP (faster, no dependencies)
-        return std::make_unique<WindowsShellEngine>();
-        
     case ArchiveFormat::SevenZ:
     case ArchiveFormat::RAR:
     case ArchiveFormat::TAR:
@@ -49,7 +46,8 @@ std::unique_ptr<IExtractionEngine> EngineFactory::CreateEngine(const std::wstrin
     case ArchiveFormat::TAR_GZ:
     case ArchiveFormat::TAR_XZ:
     case ArchiveFormat::XZ:
-        // Use libarchive for all other formats
+        // Use libarchive for all formats (thread-safe with ThreadSafeCallback wrapper)
+        // WindowsShellEngine is deprecated due to threading issues (calls callbacks from background thread)
         return std::make_unique<LibArchiveEngine>();
         
     default:
