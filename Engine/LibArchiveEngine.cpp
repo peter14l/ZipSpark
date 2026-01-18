@@ -141,16 +141,6 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         
         LOG_INFO(L"Extracting to: " + destination);
         
-        // Convert archive path to UTF-8
-        std::string archivePathUtf8;
-        int size = WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
-        if (size > 0)
-        {
-            archivePathUtf8.resize(size);
-            WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, &archivePathUtf8[0], size, nullptr, nullptr);
-            archivePathUtf8.resize(size - 1); // Exclude null terminator
-        }
-        
         // Open archive using RAII for automatic cleanup
         struct archive* raw_a = archive_read_new();
         auto archive_deleter = [](struct archive* ptr) { 
@@ -161,7 +151,8 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         archive_read_support_filter_all(a.get());
         archive_read_support_format_all(a.get());
         
-        int r = archive_read_open_filename(a.get(), archivePathUtf8.c_str(), 10240);
+        // Use native wide-char API for Windows
+        int r = archive_read_open_filename_w(a.get(), info.archivePath.c_str(), 10240);
         if (r != ARCHIVE_OK)
         {
             if (callback) callback->OnError(ErrorCode::ArchiveNotFound, L"Failed to open archive");

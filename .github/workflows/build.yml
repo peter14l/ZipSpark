@@ -39,12 +39,12 @@ jobs:
 
     - name: Install libarchive
       run: |
-        .\vcpkg\vcpkg install libarchive:x64-windows
+        .\vcpkg\vcpkg install libarchive:x64-windows-static
         echo "Libarchive installed/verified successfully"
         
     - name: Set vcpkg environment
       run: |
-        echo "VCPKG_DEFAULT_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        echo "VCPKG_DEFAULT_TRIPLET=x64-windows-static" >> $env:GITHUB_ENV
         echo "CMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
 
     - name: Restore NuGet packages
@@ -99,8 +99,8 @@ jobs:
     - name: Build project
       run: |
         $vcpkgRoot = "$PWD\vcpkg"
-        $vcpkgInclude = "$vcpkgRoot\installed\x64-windows\include"
-        $vcpkgLib = "$vcpkgRoot\installed\x64-windows\lib"
+        $vcpkgInclude = "$vcpkgRoot\installed\x64-windows-static\include"
+        $vcpkgLib = "$vcpkgRoot\installed\x64-windows-static\lib"
         
         # Debug: Show paths
         Write-Host "vcpkg Include: $vcpkgInclude"
