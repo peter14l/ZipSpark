@@ -146,9 +146,9 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         int size = WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
         if (size > 0)
         {
-            // Resize to size-1 because size includes null terminator, but resize doesn't need it
-            archivePathUtf8.resize(size - 1);
+            archivePathUtf8.resize(size);
             WideCharToMultiByte(CP_UTF8, 0, info.archivePath.c_str(), -1, &archivePathUtf8[0], size, nullptr, nullptr);
+            archivePathUtf8.resize(size - 1); // Exclude null terminator
         }
         
         // Open archive using RAII for automatic cleanup
@@ -179,13 +179,22 @@ void LibArchiveEngine::Extract(const ArchiveInfo& info, const ExtractionOptions&
         {
             // Get entry path and convert to wide string
             const char* entryPath = archive_entry_pathname(entry);
-            int wsize = MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, nullptr, 0);
             std::wstring entryPathW;
-            if (wsize > 0)
+            
+            if (entryPath)
             {
-                // Resize to wsize-1 because wsize includes null terminator, but resize doesn't need it
-                entryPathW.resize(wsize - 1);
-                MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, &entryPathW[0], wsize);
+                int wsize = MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, nullptr, 0);
+                if (wsize > 0)
+                {
+                    entryPathW.resize(wsize);
+                    MultiByteToWideChar(CP_UTF8, 0, entryPath, -1, &entryPathW[0], wsize);
+                    entryPathW.resize(wsize - 1); // Exclude null terminator
+                }
+            }
+            else
+            {
+                LOG_ERROR(L"Skipping entry with null path");
+                continue;
             }
             
             // Build full destination path
