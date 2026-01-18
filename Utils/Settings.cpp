@@ -86,7 +86,9 @@ void Settings::Load()
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Failed to load settings: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Failed to load settings: " + wwhat);
     }
 }
 
@@ -119,7 +121,9 @@ void Settings::Save()
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Failed to save settings: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Failed to save settings: " + wwhat);
     }
 }
 

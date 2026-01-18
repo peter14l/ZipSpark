@@ -83,7 +83,9 @@ void RecentFiles::Load()
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Failed to load recent files: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Failed to load recent files: " + wwhat);
     }
 }
 
@@ -106,7 +108,9 @@ void RecentFiles::Save()
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Failed to save recent files: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Failed to save recent files: " + wwhat);
     }
 }
 

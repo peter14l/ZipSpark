@@ -63,7 +63,9 @@ ArchiveInfo WindowsShellEngine::GetArchiveInfo(const std::wstring& archivePath)
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Failed to get archive info: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Failed to get archive info: " + wwhat);
     }
     
     return info;
@@ -312,7 +314,9 @@ void WindowsShellEngine::Extract(const ArchiveInfo& info, const ExtractionOption
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR(L"Extraction failed: " + std::wstring(e.what(), e.what() + strlen(e.what())));
+        std::string what = e.what();
+        std::wstring wwhat(what.begin(), what.end());
+        LOG_ERROR(L"Extraction failed: " + wwhat);
         if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Extraction error");
     }
 }
