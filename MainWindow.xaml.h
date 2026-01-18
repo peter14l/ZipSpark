@@ -35,48 +35,63 @@ namespace winrt::ZipSpark_New::implementation
         {
         private:
             winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher;
-            ZipSpark::IProgressCallback* m_target;
+            winrt::weak_ref<implementation::MainWindow> m_weakTarget;
             
         public:
             ThreadSafeCallback(
                 winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher,
-                ZipSpark::IProgressCallback* target)
-                : m_dispatcher(dispatcher), m_target(target)
+                winrt::weak_ref<implementation::MainWindow> weakTarget)
+                : m_dispatcher(dispatcher), m_weakTarget(weakTarget)
             {
             }
             
             void OnStart(int totalFiles) override
             {
-                m_dispatcher.TryEnqueue([target = m_target, totalFiles]() {
-                    target->OnStart(totalFiles);
+                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, totalFiles]() {
+                    if (auto target = weakTarget.get())
+                    {
+                        target->OnStart(totalFiles);
+                    }
                 });
             }
             
             void OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes) override
             {
-                m_dispatcher.TryEnqueue([target = m_target, percentComplete, bytesProcessed, totalBytes]() {
-                    target->OnProgress(percentComplete, bytesProcessed, totalBytes);
+                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, percentComplete, bytesProcessed, totalBytes]() {
+                    if (auto target = weakTarget.get())
+                    {
+                        target->OnProgress(percentComplete, bytesProcessed, totalBytes);
+                    }
                 });
             }
             
             void OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles) override
             {
-                m_dispatcher.TryEnqueue([target = m_target, currentFile, fileIndex, totalFiles]() {
-                    target->OnFileProgress(currentFile, fileIndex, totalFiles);
+                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, currentFile, fileIndex, totalFiles]() {
+                    if (auto target = weakTarget.get())
+                    {
+                        target->OnFileProgress(currentFile, fileIndex, totalFiles);
+                    }
                 });
             }
             
             void OnComplete(const std::wstring& destination) override
             {
-                m_dispatcher.TryEnqueue([target = m_target, destination]() {
-                    target->OnComplete(destination);
+                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, destination]() {
+                    if (auto target = weakTarget.get())
+                    {
+                        target->OnComplete(destination);
+                    }
                 });
             }
             
             void OnError(ZipSpark::ErrorCode code, const std::wstring& message) override
             {
-                m_dispatcher.TryEnqueue([target = m_target, code, message]() {
-                    target->OnError(code, message);
+                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, code, message]() {
+                    if (auto target = weakTarget.get())
+                    {
+                        target->OnError(code, message);
+                    }
                 });
             }
         };

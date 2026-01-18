@@ -301,7 +301,7 @@ namespace winrt::ZipSpark_New::implementation
                 {
                     // Use thread-safe callback wrapper to marshal all callbacks to UI thread
                     // This prevents Access Violations when calling WinRT object methods from background thread
-                    ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this.get());
+                    ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this->get_weak());
                     strong_this->m_engine->Extract(info, options, &safeCallback);
                 }
                 catch (const std::exception& e)
