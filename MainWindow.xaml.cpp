@@ -219,6 +219,124 @@ namespace winrt::ZipSpark_New::implementation
         });
     }
 
+    void MainWindow::Grid_DragOver(IInspectable const&, DragEventArgs const& e)
+    {
+        // Accept file drops
+        e.AcceptedOperation(winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::Copy);
+        e.DragUIOverride().Caption(L"Drop to extract");
+    }
+
+    winrt::fire_and_forget MainWindow::Grid_Drop(IInspectable const&, DragEventArgs const& e)
+    {
+        try
+        {
+            LOG_INFO(L"Grid_Drop called");
+            
+            auto dataView = e.DataView();
+            if (dataView.Contains(winrt::Windows::ApplicationModel::DataTransfer::StandardDataFormats::StorageItems()))
+            {
+                // Get dropped files asynchronously
+                auto items = co_await dataView.GetStorageItemsAsync();
+                if (items.Size() > 0)
+                {
+                    auto item = items.GetAt(0);
+                    if (auto file = item.try_as<winrt::Windows::Storage::StorageFile>())
+                    {
+                        std::wstring path = file.Path().c_str();
+                        LOG_INFO(L"File dropped: " + path);
+                        
+                        // Add to recent files
+                        ZipSpark::RecentFiles::GetInstance().AddFile(path);
+                        
+                        // Start extraction
+                        StartExtraction(path);
+                    }
+                }
+            }
+        }
+        catch (const winrt::hresult_error& ex)
+        {
+            std::wstring message = ex.message().c_str();
+            LOG_ERROR(L"WinRT error in Grid_Drop: " + message);
+            ShowErrorDialog(L"Error", L"Failed to process dropped file: " + message);
+        }
+        catch (const std::exception& ex)
+        {
+            std::string what = ex.what();
+            std::wstring wwhat(what.begin(), what.end());
+            LOG_ERROR(L"Error in Grid_Drop: " + wwhat);
+            ShowErrorDialog(L"Error", L"Failed to process dropped file: " + wwhat);
+        }
+        catch (...)
+        {
+            LOG_ERROR(L"Unknown error in Grid_Drop");
+            ShowErrorDialog(L"Error", L"An unexpected error occurred while processing the dropped file.");
+        }
+    }
+
+    void MainWindow::ShowSuccessMessage(const std::wstring& destination)
+    {
+        DispatcherQueue().TryEnqueue([this, destination]() {
+            try
+            {
+                // Show success state in the UI
+                DropZoneTitle().Text(L"✓ Extraction Complete!");
+                DropZoneTitle().Visibility(Visibility::Visible);
+                
+                ArchivePathText().Text(L"Files extracted to:\n" + winrt::hstring(destination));
+                ArchivePathText().Visibility(Visibility::Visible);
+                
+                ArchiveInfoText().Text(L"Opening folder in 10 seconds...");
+                ArchiveInfoText().Visibility(Visibility::Visible);
+                
+                // Hide progress section
+                ProgressSection().Visibility(Visibility::Collapsed);
+                
+                // Open the destination folder
+                try
+                {
+                    std::wstring command = L"explorer.exe \"" + destination + L"\"";
+                    _wsystem(command.c_str());
+                }
+                catch (...)
+                {
+                    LOG_ERROR(L"Failed to open destination folder");
+                }
+                
+                // Reset to empty state after 10 seconds
+                auto strong_this = get_strong();
+                DispatcherQueue().TryEnqueue(winrt::Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, [strong_this]() {
+                    // Wait 10 seconds
+                    std::this_thread::sleep_for(std::chrono::seconds(10));
+                    
+                    // Reset UI on dispatcher thread
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        strong_this->DropZoneTitle().Text(L"Drop Archive Here");
+                        strong_this->DropZoneTitle().Visibility(Visibility::Visible);
+                        
+                        strong_this->ArchivePathText().Visibility(Visibility::Collapsed);
+                        strong_this->ArchiveInfoText().Visibility(Visibility::Collapsed);
+                        
+                        strong_this->SupportedFormatsPanel().Visibility(Visibility::Visible);
+                        strong_this->BrowseButton().Visibility(Visibility::Visible);
+                        
+                        strong_this->m_extracting = false;
+                    });
+                });
+            }
+            catch (const std::exception& ex)
+            {
+                std::string what = ex.what();
+                std::wstring wwhat(what.begin(), what.end());
+                LOG_ERROR(L"Error in ShowSuccessMessage: " + wwhat);
+            }
+            catch (...)
+            {
+                LOG_ERROR(L"Unknown error in ShowSuccessMessage");
+            }
+        });
+    }
+
     winrt::fire_and_forget MainWindow::StartExtraction(const std::wstring& archivePath)
     {
         // Capture strong reference immediately
@@ -649,15 +767,9 @@ namespace winrt::ZipSpark_New::implementation
             }
             
             HideExtractionProgress();
-            m_extracting = false;
             
-            // Reset to empty state
-            DropZoneTitle().Visibility(Visibility::Visible);
-            SupportedFormatsPanel().Visibility(Visibility::Visible);
-            BrowseButton().Visibility(Visibility::Visible);
-            ArchivePathText().Text(L"");
-            ArchivePathText().Visibility(Visibility::Collapsed);
-            ArchiveInfoText().Visibility(Visibility::Collapsed);
+            // Show success message with 10-second auto-reset
+            ShowSuccessMessage(destination);
         });
     }
 
