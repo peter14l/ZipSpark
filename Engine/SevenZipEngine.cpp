@@ -115,7 +115,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
         LOG_ERROR(L"7z.exe not found! Searched in application directory and External/7-Zip");
         if (callback) 
         {
-            callback->OnError(ErrorCode::EngineInitializationFailed, 
+            callback->OnError(ErrorCode::ExtractionFailed, 
                 L"7z.exe is missing.\n\n"
                 L"Please run Setup-7Zip.ps1 to download it, or place 7z.exe in the application directory.\n\n"
                 L"The extraction engine requires 7-Zip to extract archives.");
