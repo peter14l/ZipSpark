@@ -79,11 +79,18 @@ namespace winrt::ZipSpark_New::implementation
             m_archivePath = archivePath.c_str();
             LOG_INFO(L"Archive path set to: " + m_archivePath);
             
-            // Auto-start extraction if archive path provided
+            // CRITICAL FIX: Defer extraction until after window is activated
+            // Calling StartExtraction during construction causes UI thread blocking
             if (!m_archivePath.empty())
             {
-                LOG_INFO(L"Auto-starting extraction for: " + m_archivePath);
-                StartExtraction(m_archivePath);
+                LOG_INFO(L"Deferring extraction until window is activated");
+                
+                // Use DispatcherQueue to defer extraction until after activation
+                auto strong_this = get_strong();
+                DispatcherQueue().TryEnqueue([strong_this]() {
+                    LOG_INFO(L"Window activated, starting deferred extraction");
+                    strong_this->StartExtraction(strong_this->m_archivePath);
+                });
             }
             
             LOG_INFO(L"MainWindow(archivePath) constructor completed");
@@ -212,148 +219,180 @@ namespace winrt::ZipSpark_New::implementation
         });
     }
 
-    void MainWindow::StartExtraction(const std::wstring& archivePath)
+    winrt::fire_and_forget MainWindow::StartExtraction(const std::wstring& archivePath)
     {
+        // Capture strong reference immediately
+        auto strong_this = get_strong();
+        
         if (m_extracting)
-            return;
+        {
+            LOG_WARNING(L"Extraction already in progress, ignoring request");
+            co_return;
+        }
         
         m_extracting = true;
         m_archivePath = archivePath;
         
         LOG_INFO(L"Starting extraction for: " + archivePath);
         
-        // Show progress UI immediately
-        ShowExtractionProgress();
-        StatusText().Text(L"Scanning archive...");
-        FileProgressBar().IsIndeterminate(true);
-        
-        // Start extraction on background thread using WinRT async pattern
-        // Capture a strong reference to keep the object alive
-        auto strong_this = get_strong();
-        [strong_this, archivePath]() -> winrt::fire_and_forget
+        try
         {
-            try
+            // Show progress UI immediately on UI thread
+            ShowExtractionProgress();
+            StatusText().Text(L"Scanning archive...");
+            FileProgressBar().IsIndeterminate(true);
+            
+            // Switch to background thread for all heavy operations
+            co_await winrt::resume_background();
+            
+            LOG_INFO(L"Switched to background thread for extraction");
+            
+            // Create extraction engine
+            try 
             {
-                // Switch to background thread
-                co_await winrt::resume_background();
-                
-                // Create extraction engine
-                try 
-                {
-                    strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
-                }
-                catch (...)
-                {
-                    strong_this->m_engine = nullptr;
-                }
-
-                if (!strong_this->m_engine)
-                {
-                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                        strong_this->OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format or failed to initialize engine");
-                    });
-                    strong_this->m_extracting = false;
-                    co_return;
-                }
-                
-                // Get archive info
-                ZipSpark::ArchiveInfo info;
-                try 
-                {
-                    info = strong_this->m_engine->GetArchiveInfo(archivePath);
-                }
-                catch (...)
-                {
-                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                        strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
-                    });
-                    strong_this->m_extracting = false;
-                    co_return;
-                }
-                
-                // Update UI with archive info
-                strong_this->DispatcherQueue().TryEnqueue([strong_this, info]() {
-                    try
-                    {
-                        // Hide empty state elements
-                        strong_this->DropZoneTitle().Visibility(Visibility::Collapsed);
-                        strong_this->SupportedFormatsPanel().Visibility(Visibility::Collapsed);
-                        strong_this->BrowseButton().Visibility(Visibility::Collapsed);
-                        
-                        // Show archive info
-                        strong_this->ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
-                        strong_this->ArchivePathText().Visibility(Visibility::Visible);
-                        
-                        std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
-                        std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
-                        strong_this->ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
-                        strong_this->ArchiveInfoText().Visibility(Visibility::Visible);
-                    }
-                    catch(...) {} // Ignore UI update errors
-                });
-                
-                // Set extraction options
-                ZipSpark::ExtractionOptions options;
-                options.createSubfolder = !info.hasSingleRoot;
-                options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
-                
-                try
-                {
-                    // Use thread-safe callback wrapper to marshal all callbacks to UI thread
-                    // This prevents Access Violations when calling WinRT object methods from background thread
-                    ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this->get_weak());
-                    strong_this->m_engine->Extract(info, options, &safeCallback);
-                }
-                catch (const std::exception& e)
-                {
-                    std::string what = e.what();
-                    std::wstring wwhat(what.begin(), what.end());
-                    LOG_ERROR(L"Extraction exception: " + wwhat);
-                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                        strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed");
-                    });
-                }
-                catch (...)
-                {
-                    LOG_ERROR(L"Unknown extraction exception");
-                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                        strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed (Unknown Error)");
-                    });
-                }
-                
-                strong_this->m_extracting = false;
-            }
-            catch (const winrt::hresult_error& ex)
-            {
-                // WinRT-specific errors
-                std::wstring message = ex.message().c_str();
-                LOG_ERROR(L"WinRT error in StartExtraction: " + message);
-                strong_this->m_extracting = false;
-                strong_this->DispatcherQueue().TryEnqueue([strong_this, message]() {
-                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"WinRT Error: " + message);
-                });
+                strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
             }
             catch (const std::exception& ex)
             {
-                // Standard C++ exceptions
                 std::string what = ex.what();
                 std::wstring wwhat(what.begin(), what.end());
-                LOG_ERROR(L"Exception in StartExtraction: " + wwhat);
-                strong_this->m_extracting = false;
-                strong_this->DispatcherQueue().TryEnqueue([strong_this, wwhat]() {
-                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Error: " + wwhat);
-                });
+                LOG_ERROR(L"Exception creating engine: " + wwhat);
+                strong_this->m_engine = nullptr;
             }
             catch (...)
             {
-                // Catch all other exceptions
-                LOG_ERROR(L"Unknown exception in StartExtraction async block");
-                strong_this->m_extracting = false;
-                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"An unexpected error occurred during extraction.");
-                });
+                LOG_ERROR(L"Unknown exception creating engine");
+                strong_this->m_engine = nullptr;
             }
-        }();
+
+            if (!strong_this->m_engine)
+            {
+                LOG_ERROR(L"Failed to create extraction engine");
+                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                strong_this->OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format or failed to initialize engine");
+                strong_this->m_extracting = false;
+                co_return;
+            }
+            
+            // Get archive info
+            ZipSpark::ArchiveInfo info;
+            try 
+            {
+                LOG_INFO(L"Getting archive info");
+                info = strong_this->m_engine->GetArchiveInfo(archivePath);
+                LOG_INFO(L"Archive info retrieved successfully");
+            }
+            catch (const std::exception& ex)
+            {
+                std::string what = ex.what();
+                std::wstring wwhat(what.begin(), what.end());
+                LOG_ERROR(L"Exception getting archive info: " + wwhat);
+                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information: " + wwhat);
+                strong_this->m_extracting = false;
+                co_return;
+            }
+            catch (...)
+            {
+                LOG_ERROR(L"Unknown exception getting archive info");
+                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
+                strong_this->m_extracting = false;
+                co_return;
+            }
+            
+            // Update UI with archive info (switch back to UI thread)
+            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            
+            try
+            {
+                // Hide empty state elements
+                strong_this->DropZoneTitle().Visibility(Visibility::Collapsed);
+                strong_this->SupportedFormatsPanel().Visibility(Visibility::Collapsed);
+                strong_this->BrowseButton().Visibility(Visibility::Collapsed);
+                
+                // Show archive info
+                strong_this->ArchivePathText().Text(L"Extracting: " + winrt::hstring(info.archivePath));
+                strong_this->ArchivePathText().Visibility(Visibility::Visible);
+                
+                std::wstring sizeStr = std::to_wstring(info.totalSize / (1024 * 1024)) + L" MB";
+                std::wstring fileCountStr = (info.fileCount > 0) ? std::to_wstring(info.fileCount) + L" files" : L"Scanning...";
+                strong_this->ArchiveInfoText().Text(winrt::hstring(fileCountStr + L" • " + sizeStr));
+                strong_this->ArchiveInfoText().Visibility(Visibility::Visible);
+            }
+            catch(const std::exception& ex) 
+            {
+                std::string what = ex.what();
+                std::wstring wwhat(what.begin(), what.end());
+                LOG_ERROR(L"Exception updating UI: " + wwhat);
+            }
+            catch(...) 
+            {
+                LOG_ERROR(L"Unknown exception updating UI");
+            }
+            
+            // Switch back to background thread for extraction
+            co_await winrt::resume_background();
+            
+            // Set extraction options
+            ZipSpark::ExtractionOptions options;
+            options.createSubfolder = !info.hasSingleRoot;
+            options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
+            
+            LOG_INFO(L"Starting extraction with thread-safe callbacks");
+            
+            try
+            {
+                // Use thread-safe callback wrapper to marshal all callbacks to UI thread
+                // This prevents Access Violations when calling WinRT object methods from background thread
+                ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this->get_weak());
+                strong_this->m_engine->Extract(info, options, &safeCallback);
+                LOG_INFO(L"Extraction completed");
+            }
+            catch (const std::exception& e)
+            {
+                std::string what = e.what();
+                std::wstring wwhat(what.begin(), what.end());
+                LOG_ERROR(L"Extraction exception: " + wwhat);
+                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed: " + wwhat);
+            }
+            catch (...)
+            {
+                LOG_ERROR(L"Unknown extraction exception");
+                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed (Unknown Error)");
+            }
+            
+            strong_this->m_extracting = false;
+        }
+        catch (const winrt::hresult_error& ex)
+        {
+            // WinRT-specific errors
+            std::wstring message = ex.message().c_str();
+            LOG_ERROR(L"WinRT error in StartExtraction: " + message);
+            strong_this->m_extracting = false;
+            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"WinRT Error: " + message);
+        }
+        catch (const std::exception& ex)
+        {
+            // Standard C++ exceptions
+            std::string what = ex.what();
+            std::wstring wwhat(what.begin(), what.end());
+            LOG_ERROR(L"Exception in StartExtraction: " + wwhat);
+            strong_this->m_extracting = false;
+            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Error: " + wwhat);
+        }
+        catch (...)
+        {
+            // Catch all other exceptions
+            LOG_ERROR(L"Unknown exception in StartExtraction");
+            strong_this->m_extracting = false;
+            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"An unexpected error occurred during extraction.");
+        }
     }
 
     void MainWindow::CancelButton_Click(IInspectable const&, RoutedEventArgs const&)

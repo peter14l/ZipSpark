@@ -47,52 +47,72 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnStart(int totalFiles) override
             {
-                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, totalFiles]() {
+                bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, totalFiles]() {
                     if (auto target = weakTarget.get())
                     {
                         target->OnStart(totalFiles);
                     }
                 });
+                if (!enqueued)
+                {
+                    OutputDebugStringW(L"[ZipSpark] Failed to enqueue OnStart callback\n");
+                }
             }
             
             void OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes) override
             {
-                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, percentComplete, bytesProcessed, totalBytes]() {
+                bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, percentComplete, bytesProcessed, totalBytes]() {
                     if (auto target = weakTarget.get())
                     {
                         target->OnProgress(percentComplete, bytesProcessed, totalBytes);
                     }
                 });
+                if (!enqueued)
+                {
+                    OutputDebugStringW(L"[ZipSpark] Failed to enqueue OnProgress callback\n");
+                }
             }
             
             void OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles) override
             {
-                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, currentFile, fileIndex, totalFiles]() {
+                bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, currentFile, fileIndex, totalFiles]() {
                     if (auto target = weakTarget.get())
                     {
                         target->OnFileProgress(currentFile, fileIndex, totalFiles);
                     }
                 });
+                if (!enqueued)
+                {
+                    OutputDebugStringW(L"[ZipSpark] Failed to enqueue OnFileProgress callback\n");
+                }
             }
             
             void OnComplete(const std::wstring& destination) override
             {
-                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, destination]() {
+                bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, destination]() {
                     if (auto target = weakTarget.get())
                     {
                         target->OnComplete(destination);
                     }
                 });
+                if (!enqueued)
+                {
+                    OutputDebugStringW(L"[ZipSpark] Failed to enqueue OnComplete callback\n");
+                }
             }
             
             void OnError(ZipSpark::ErrorCode code, const std::wstring& message) override
             {
-                m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, code, message]() {
+                bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, code, message]() {
                     if (auto target = weakTarget.get())
                     {
                         target->OnError(code, message);
                     }
                 });
+                if (!enqueued)
+                {
+                    OutputDebugStringW(L"[ZipSpark] Failed to enqueue OnError callback\n");
+                }
             }
         };
 
@@ -100,7 +120,7 @@ namespace winrt::ZipSpark_New::implementation
         void SetupMicaBackdrop();
         void ShowExtractionProgress();
         void HideExtractionProgress();
-        void StartExtraction(const std::wstring& archivePath);
+        winrt::fire_and_forget StartExtraction(const std::wstring& archivePath);
         void UpdateProgressUI(int percent, uint64_t bytesProcessed, uint64_t totalBytes);
         void ShowErrorDialog(const std::wstring& title, const std::wstring& message);
         

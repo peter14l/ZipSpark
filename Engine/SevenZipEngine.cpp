@@ -23,6 +23,9 @@ SevenZipEngine::~SevenZipEngine()
     }
 }
 
+// Timeout for extraction process (30 seconds)
+constexpr DWORD EXTRACTION_TIMEOUT_MS = 30000;
+
 bool SevenZipEngine::CanHandle(const std::wstring& archivePath)
 {
     fs::path path(archivePath);
@@ -109,10 +112,18 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     std::wstring exe7z = Get7zExePath();
     if (exe7z.empty())
     {
-        LOG_ERROR(L"7z.exe not found!");
-        if (callback) callback->OnError(ErrorCode::EngineInitializationFailed, L"7z.exe missing. Please reinstall.");
+        LOG_ERROR(L"7z.exe not found! Searched in application directory and External/7-Zip");
+        if (callback) 
+        {
+            callback->OnError(ErrorCode::EngineInitializationFailed, 
+                L"7z.exe is missing.\n\n"
+                L"Please run Setup-7Zip.ps1 to download it, or place 7z.exe in the application directory.\n\n"
+                L"The extraction engine requires 7-Zip to extract archives.");
+        }
         return;
     }
+    
+    LOG_INFO(L"Found 7z.exe at: " + exe7z);
     
     std::wstring dest = DetermineDestination(info, options);
     
@@ -137,19 +148,63 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
         m_hSubProcess = pi.hProcess; // Store for cancellation (naive, thread safety needed usually but simplified here)
         CloseHandle(pi.hThread);
         
-        // Wait for it to finish
-        // TODO: For better progress, we'd use pipes and PeekNamedPipe/ReadFile loop
-        // For now, we wait and poll for cancellation
+        LOG_INFO(L"7z.exe process started successfully");
         
-        while (WaitForSingleObject(pi.hProcess, 100) == WAIT_TIMEOUT)
+        // Wait for it to finish with timeout
+        // Track total elapsed time to implement timeout
+        auto startTime = std::chrono::steady_clock::now();
+        DWORD totalElapsed = 0;
+        
+        while (true)
         {
-            if (m_cancelled)
+            DWORD waitResult = WaitForSingleObject(pi.hProcess, 100);
+            
+            if (waitResult == WAIT_OBJECT_0)
             {
-                LOG_INFO(L"Terminating 7z.exe...");
-                TerminateProcess(pi.hProcess, 1);
+                // Process completed
+                LOG_INFO(L"7z.exe process completed");
                 break;
             }
-            // Indeterminate progress update?
+            else if (waitResult == WAIT_TIMEOUT)
+            {
+                // Check for cancellation
+                if (m_cancelled)
+                {
+                    LOG_INFO(L"Terminating 7z.exe due to user cancellation...");
+                    TerminateProcess(pi.hProcess, 1);
+                    break;
+                }
+                
+                // Check for timeout (30 seconds)
+                auto now = std::chrono::steady_clock::now();
+                totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+                
+                if (totalElapsed > EXTRACTION_TIMEOUT_MS)
+                {
+                    LOG_ERROR(L"7z.exe process timed out after " + std::to_wstring(totalElapsed) + L"ms");
+                    TerminateProcess(pi.hProcess, 1);
+                    CloseHandle(pi.hProcess);
+                    m_hSubProcess = nullptr;
+                    
+                    if (callback)
+                    {
+                        callback->OnError(ErrorCode::ExtractionFailed, 
+                            L"Extraction timed out after 30 seconds.\n\n"
+                            L"The archive may be corrupted or too large.");
+                    }
+                    return;
+                }
+                
+                // Continue waiting
+                continue;
+            }
+            else
+            {
+                // Wait failed
+                DWORD err = GetLastError();
+                LOG_ERROR(L"WaitForSingleObject failed with error: " + std::to_wstring(err));
+                break;
+            }
         }
         
         DWORD exitCode = 0;
@@ -160,6 +215,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
         
         if (m_cancelled)
         {
+             LOG_INFO(L"Extraction was cancelled by user");
              if (callback) callback->OnError(ErrorCode::Unknown, L"Cancelled");
              return;
         }
@@ -179,7 +235,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     {
         DWORD err = GetLastError();
         LOG_ERROR(L"Failed to start 7z.exe. Error: " + std::to_wstring(err));
-        if (callback) callback->OnError(ErrorCode::Unknown, L"Failed to launch extractor.");
+        if (callback) callback->OnError(ErrorCode::Unknown, L"Failed to launch extractor. Error code: " + std::to_wstring(err));
     }
 }
 

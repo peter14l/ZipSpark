@@ -26,11 +26,38 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          vcpkg
+          !vcpkg/.git
+          !vcpkg/buildtrees
+          !vcpkg/downloads
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('packages.config') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('packages.config') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
     - name: Setup vcpkg
       run: |
-        git clone https://github.com/Microsoft/vcpkg.git
+        if (-not (Test-Path "vcpkg\vcpkg.exe")) {
+          Write-Host "vcpkg not cached, cloning and bootstrapping..."
+          git clone https://github.com/Microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          cd ..
+        } else {
+          Write-Host "vcpkg found in cache, skipping clone and bootstrap"
+        }
         cd vcpkg
-        .\bootstrap-vcpkg.bat
         .\vcpkg integrate install
         cd ..
 
@@ -39,7 +66,12 @@ jobs:
 
     - name: Install libarchive (Compile-time dependency)
       run: |
-        .\vcpkg\vcpkg install libarchive:x64-windows-static
+        if (-not (Test-Path "vcpkg\installed\x64-windows-static\include\archive.h")) {
+          Write-Host "Installing libarchive..."
+          .\vcpkg\vcpkg install libarchive:x64-windows-static
+        } else {
+          Write-Host "libarchive found in cache, skipping installation"
+        }
         echo "Libarchive installed successfully"
         
     - name: Set vcpkg environment
