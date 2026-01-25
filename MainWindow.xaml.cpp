@@ -268,7 +268,9 @@ namespace winrt::ZipSpark_New::implementation
             if (!strong_this->m_engine)
             {
                 LOG_ERROR(L"Failed to create extraction engine");
-                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                // Switch back to UI thread for error handling
+                auto dispatcher = strong_this->DispatcherQueue();
+                co_await winrt::resume_foreground(dispatcher);
                 strong_this->OnError(ZipSpark::ErrorCode::UnsupportedFormat, L"Unsupported archive format or failed to initialize engine");
                 strong_this->m_extracting = false;
                 co_return;
@@ -287,7 +289,8 @@ namespace winrt::ZipSpark_New::implementation
                 std::string what = ex.what();
                 std::wstring wwhat(what.begin(), what.end());
                 LOG_ERROR(L"Exception getting archive info: " + wwhat);
-                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                auto dispatcher = strong_this->DispatcherQueue();
+                co_await winrt::resume_foreground(dispatcher);
                 strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information: " + wwhat);
                 strong_this->m_extracting = false;
                 co_return;
@@ -295,14 +298,16 @@ namespace winrt::ZipSpark_New::implementation
             catch (...)
             {
                 LOG_ERROR(L"Unknown exception getting archive info");
-                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                auto dispatcher = strong_this->DispatcherQueue();
+                co_await winrt::resume_foreground(dispatcher);
                 strong_this->OnError(ZipSpark::ErrorCode::ArchiveNotFound, L"Failed to read archive information");
                 strong_this->m_extracting = false;
                 co_return;
             }
             
             // Update UI with archive info (switch back to UI thread)
-            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            auto dispatcher = strong_this->DispatcherQueue();
+            co_await winrt::resume_foreground(dispatcher);
             
             try
             {
@@ -354,13 +359,15 @@ namespace winrt::ZipSpark_New::implementation
                 std::string what = e.what();
                 std::wstring wwhat(what.begin(), what.end());
                 LOG_ERROR(L"Extraction exception: " + wwhat);
-                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                auto dispatcher2 = strong_this->DispatcherQueue();
+                co_await winrt::resume_foreground(dispatcher2);
                 strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed: " + wwhat);
             }
             catch (...)
             {
                 LOG_ERROR(L"Unknown extraction exception");
-                co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+                auto dispatcher2 = strong_this->DispatcherQueue();
+                co_await winrt::resume_foreground(dispatcher2);
                 strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Extraction failed (Unknown Error)");
             }
             
@@ -372,7 +379,8 @@ namespace winrt::ZipSpark_New::implementation
             std::wstring message = ex.message().c_str();
             LOG_ERROR(L"WinRT error in StartExtraction: " + message);
             strong_this->m_extracting = false;
-            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            auto dispatcher = strong_this->DispatcherQueue();
+            co_await winrt::resume_foreground(dispatcher);
             strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"WinRT Error: " + message);
         }
         catch (const std::exception& ex)
@@ -382,7 +390,8 @@ namespace winrt::ZipSpark_New::implementation
             std::wstring wwhat(what.begin(), what.end());
             LOG_ERROR(L"Exception in StartExtraction: " + wwhat);
             strong_this->m_extracting = false;
-            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            auto dispatcher = strong_this->DispatcherQueue();
+            co_await winrt::resume_foreground(dispatcher);
             strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Error: " + wwhat);
         }
         catch (...)
@@ -390,7 +399,8 @@ namespace winrt::ZipSpark_New::implementation
             // Catch all other exceptions
             LOG_ERROR(L"Unknown exception in StartExtraction");
             strong_this->m_extracting = false;
-            co_await winrt::resume_foreground(strong_this->DispatcherQueue());
+            auto dispatcher = strong_this->DispatcherQueue();
+            co_await winrt::resume_foreground(dispatcher);
             strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"An unexpected error occurred during extraction.");
         }
     }

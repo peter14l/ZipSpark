@@ -216,7 +216,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
         if (m_cancelled)
         {
              LOG_INFO(L"Extraction was cancelled by user");
-             if (callback) callback->OnError(ErrorCode::Unknown, L"Cancelled");
+             if (callback) callback->OnError(ErrorCode::CancellationRequested, L"Cancelled");
              return;
         }
         
@@ -235,7 +235,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     {
         DWORD err = GetLastError();
         LOG_ERROR(L"Failed to start 7z.exe. Error: " + std::to_wstring(err));
-        if (callback) callback->OnError(ErrorCode::Unknown, L"Failed to launch extractor. Error code: " + std::to_wstring(err));
+        if (callback) callback->OnError(ErrorCode::UnknownError, L"Failed to launch extractor. Error code: " + std::to_wstring(err));
     }
 }
 

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SevenZipEngine.h"
 #include "../Utils/Logger.h"
 #include <filesystem>
