@@ -370,19 +370,12 @@ namespace winrt::ZipSpark_New::implementation
             {
                 strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
             }
-            catch (const std::exception& ex)
-            {
-                std::string what = ex.what();
-                std::wstring wwhat(what.begin(), what.end());
-                LOG_ERROR(L"Exception creating engine: " + wwhat);
-                strong_this->m_engine = nullptr;
-            }
             catch (...)
             {
-                LOG_ERROR(L"Unknown exception creating engine");
+                LOG_ERROR(L"Exception in CreateEngine");
                 strong_this->m_engine = nullptr;
             }
-
+            
             if (!strong_this->m_engine)
             {
                 LOG_ERROR(L"Failed to create extraction engine");

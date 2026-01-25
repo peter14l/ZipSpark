@@ -14,18 +14,19 @@ ArchiveFormat EngineFactory::DetectFormat(const std::wstring& archivePath)
     fs::path path(archivePath);
     std::wstring ext = path.extension().wstring();
     
-    // Convert to lowercase for comparison
-    std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+    LOG_INFO(L"DetectFormat checking extension: '" + ext + L"' for path: '" + archivePath + L"'");
     
-    if (ext == L".zip") return ArchiveFormat::ZIP;
-    if (ext == L".7z") return ArchiveFormat::SevenZ;
-    if (ext == L".rar") return ArchiveFormat::RAR;
-    if (ext == L".tar") return ArchiveFormat::TAR;
-    if (ext == L".gz") return ArchiveFormat::GZ;
-    if (ext == L".tgz") return ArchiveFormat::TAR_GZ;
-    if (ext == L".txz") return ArchiveFormat::TAR_XZ;
-    if (ext == L".xz") return ArchiveFormat::XZ;
+    // Use _wcsicmp for robust case-insensitive comparison on Windows
+    if (_wcsicmp(ext.c_str(), L".zip") == 0) return ArchiveFormat::ZIP;
+    if (_wcsicmp(ext.c_str(), L".7z") == 0) return ArchiveFormat::SevenZ;
+    if (_wcsicmp(ext.c_str(), L".rar") == 0) return ArchiveFormat::RAR;
+    if (_wcsicmp(ext.c_str(), L".tar") == 0) return ArchiveFormat::TAR;
+    if (_wcsicmp(ext.c_str(), L".gz") == 0) return ArchiveFormat::GZ;
+    if (_wcsicmp(ext.c_str(), L".tgz") == 0) return ArchiveFormat::TAR_GZ;
+    if (_wcsicmp(ext.c_str(), L".txz") == 0) return ArchiveFormat::TAR_XZ;
+    if (_wcsicmp(ext.c_str(), L".xz") == 0) return ArchiveFormat::XZ;
     
+    LOG_WARNING(L"Detected Unknown format for extension: '" + ext + L"'");
     return ArchiveFormat::Unknown;
 }
 
