@@ -125,10 +125,6 @@ namespace winrt::ZipSpark_New::implementation
         void ShowErrorDialog(const std::wstring& title, const std::wstring& message);
         void ShowSuccessMessage(const std::wstring& destination);
         
-        // Drag and drop handlers
-        void Grid_DragOver(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::DragEventArgs const& e);
-        void Grid_Drop(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::DragEventArgs const& e);
-        
         std::wstring m_archivePath;
         std::unique_ptr<ZipSpark::IExtractionEngine> m_engine;
         std::atomic<bool> m_extracting{ false };
