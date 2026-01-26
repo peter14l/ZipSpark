@@ -31,7 +31,7 @@ IFACEMETHODIMP ExplorerCommand::GetToolTip(IShellItemArray* psiItemArray, LPWSTR
 
 IFACEMETHODIMP ExplorerCommand::GetCanonicalName(GUID* pguidCommandName)
 {
-    *pguidCommandName = __uuidof(ZipSparkCommand);
+    *pguidCommandName = __uuidof(ExplorerCommand);
     return S_OK;
 }
 
