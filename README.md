@@ -86,6 +86,13 @@ ZipSpark-New/
 
 [Add your license here]
 
+## Support the Project
+    
+If you find ZipSpark useful, please consider supporting its development to keep the project alive!
+
+- ☕ **Ko-fi**: [Buy me a coffee](https://ko-fi.com/zipspark)
+- 🇮🇳 **UPI (India)**: `zipspark@upi` (Replace with actual UPI ID if available, using placeholder for now as per request)
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
