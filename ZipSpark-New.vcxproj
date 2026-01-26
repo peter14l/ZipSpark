@@ -247,6 +247,10 @@
     <Content Include="External\7-Zip\7z.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="$(Platform)\$(Configuration)\ZipSpark.ShellExtension.dll">
+      <Link>ZipSpark.ShellExtension.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="ZipSpark.ShellExtension\ZipSpark.ShellExtension.vcxproj">
