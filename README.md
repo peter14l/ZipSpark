@@ -33,7 +33,7 @@ A modern Windows archive extraction utility with macOS-style double-click extrac
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ZipSpark-New.git
+   git clone https://github.com/peter14l/ZipSpark.git
    cd ZipSpark-New
    ```
 

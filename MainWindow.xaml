@@ -74,6 +74,7 @@
                                 Text="Drop Archive Here"
                                 Style="{StaticResource SubtitleTextBlockStyle}"
                                 HorizontalAlignment="Center"
+                                TextAlignment="Center"
                                 FontWeight="SemiBold"/>
                             
                             <!-- Archive Path (hidden initially) -->
@@ -84,6 +85,7 @@
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 TextWrapping="Wrap"
                                 HorizontalAlignment="Center"
+                                TextAlignment="Center"
                                 Visibility="Collapsed"/>
                             
                             <!-- Archive Info (hidden initially) -->
@@ -93,6 +95,7 @@
                                 Style="{StaticResource CaptionTextBlockStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 HorizontalAlignment="Center"
+                                TextAlignment="Center"
                                 Visibility="Collapsed"/>
                             
                             <!-- Supported Formats -->
@@ -159,14 +162,20 @@
                         <!-- Current File Progress -->
                         <StackPanel Spacing="8">
                             <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
                                 <TextBlock 
                                     x:Name="CurrentFileText"
+                                    Grid.Column="0"
                                     Text="Extracting..."
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{StaticResource TextSecondaryBrush}"
                                     TextTrimming="CharacterEllipsis"/>
                                 <TextBlock 
                                     x:Name="SpeedText"
+                                    Grid.Column="1"
                                     Text="0 MB/s"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{StaticResource TextSecondaryBrush}"

@@ -368,7 +368,9 @@ namespace winrt::ZipSpark_New::implementation
             // Create extraction engine
             try 
             {
-                strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(archivePath);
+                // Fix: Use member variable m_archivePath as the reference parameter 'archivePath' 
+                // might be invalid if it came from a temporary string (e.g. Drop handler)
+                strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(strong_this->m_archivePath);
             }
             catch (...)
             {
@@ -392,7 +394,8 @@ namespace winrt::ZipSpark_New::implementation
             try 
             {
                 LOG_INFO(L"Getting archive info");
-                info = strong_this->m_engine->GetArchiveInfo(archivePath);
+                // Fix: Use member variable here too
+                info = strong_this->m_engine->GetArchiveInfo(strong_this->m_archivePath);
                 LOG_INFO(L"Archive info retrieved successfully");
             }
             catch (const std::exception& ex)
