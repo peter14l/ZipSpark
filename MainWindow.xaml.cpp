@@ -455,7 +455,7 @@ namespace winrt::ZipSpark_New::implementation
                 // Use thread-safe callback wrapper to marshal all callbacks to UI thread
                 // This prevents Access Violations when calling WinRT object methods from background thread
                 ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this->get_weak());
-                strong_this->m_engine->Extract(info, options, &safeCallback);
+                strong_this->m_currentEngine->Extract(info, options, &safeCallback);
                 LOG_INFO(L"Extraction completed");
             }
             catch (const std::exception& e)
@@ -511,9 +511,9 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::CancelButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
-        if (m_engine && m_extracting)
+        if (m_currentEngine && m_extracting)
         {
-            m_engine->Cancel();
+            m_currentEngine->Cancel();
             LOG_INFO(L"User cancelled extraction");
         }
         
