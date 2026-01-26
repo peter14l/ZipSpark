@@ -18,6 +18,7 @@ public:
     bool CanHandle(const std::wstring& archivePath) override;
     ArchiveInfo GetArchiveInfo(const std::wstring& archivePath) override;
     void Extract(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback) override;
+    void CreateArchive(const std::wstring& destinationPath, const std::vector<std::wstring>& sourceFiles, const std::wstring& format, IProgressCallback* callback) override;
     void Cancel() override;
     std::wstring GetEngineName() const override { return L"7-Zip (Process)"; }
     

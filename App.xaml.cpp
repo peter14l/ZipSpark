@@ -81,6 +81,11 @@ namespace winrt::ZipSpark_New::implementation
             bool extractHere = false;
             bool extractTo = false;
             
+            // Creation mode variables
+            bool isCreationMode = false;
+            std::wstring creationFormat;
+            std::vector<std::wstring> creationFiles;
+            
             try
             {
                 // Get command-line arguments
@@ -96,7 +101,58 @@ namespace winrt::ZipSpark_New::implementation
                         std::wstring arg = argv[i];
                         LOG_INFO(L"Command-line arg[" + std::to_wstring(i) + L"]: " + arg);
                         
-                        if (arg == L"--extract-here")
+                        // Protocol Activation: zipspark:create?format=...&files=...
+                        if (arg.find(L"zipspark:") == 0)
+                        {
+                            LOG_INFO(L"Protocol activation detected");
+                            
+                            // Check action
+                            if (arg.find(L"create") != std::wstring::npos)
+                            {
+                                isCreationMode = true;
+                                
+                                // Parse format
+                                size_t formatPos = arg.find(L"format=");
+                                if (formatPos != std::wstring::npos)
+                                {
+                                    size_t ampPos = arg.find(L"&", formatPos);
+                                    if (ampPos == std::wstring::npos) ampPos = arg.length();
+                                    creationFormat = arg.substr(formatPos + 7, ampPos - (formatPos + 7));
+                                }
+                                
+                                // Parse files temp path
+                                size_t filesPos = arg.find(L"files=");
+                                if (filesPos != std::wstring::npos)
+                                {
+                                    size_t ampPos = arg.find(L"&", filesPos);
+                                    if (ampPos == std::wstring::npos) ampPos = arg.length();
+                                    std::wstring tempFileListPath = arg.substr(filesPos + 6, ampPos - (filesPos + 6));
+                                    
+                                    LOG_INFO(L"Reading file list from: " + tempFileListPath);
+                                    
+                                    // Read files from temp file
+                                    std::wifstream file(tempFileListPath.c_str());
+                                    if (file.is_open())
+                                    {
+                                        // Set locale to handle UTF-8 if possible, but wifstream defaults usually work for simple paths
+                                        // Ideally we use _wfopen and generic helper, but simple approach for now:
+                                        std::wstring line;
+                                        while (std::getline(file, line))
+                                        {
+                                            if (!line.empty())
+                                            {
+                                                 creationFiles.push_back(line);
+                                            }
+                                        }
+                                        file.close();
+                                        
+                                        // Optional: Delete temp file
+                                        // DeleteFileW(tempFileListPath.c_str());
+                                    }
+                                }
+                            }
+                        }
+                        else if (arg == L"--extract-here")
                         {
                             extractHere = true;
                             LOG_INFO(L"Extract Here mode enabled");
@@ -129,18 +185,15 @@ namespace winrt::ZipSpark_New::implementation
                 LOG_ERROR(L"Unknown exception parsing command-line");
             }
             
-            // Handle context menu verbs (silent extraction)
-            if ((extractHere || extractTo) && !archivePath.empty())
-            {
-                // TODO: Implement silent extraction handlers
-                LOG_INFO(extractHere ? L"Extract Here requested" : L"Extract To requested");
-                // For now, just open the window
-            }
-            
-            // Create main window with archive path (if provided)
+            // Create main window
             LOG_INFO(L"Creating main window...");
             
-            if (!archivePath.empty())
+            if (isCreationMode)
+            {
+                 LOG_INFO(L"Initializing Creation Mode with " + std::to_wstring(creationFiles.size()) + L" files");
+                 window = make<MainWindow>();
+            }
+            else if (!archivePath.empty())
             {
                 LOG_INFO(L"Creating MainWindow with archive path: " + std::wstring(archivePath));
                 window = make<MainWindow>(archivePath);
@@ -153,6 +206,23 @@ namespace winrt::ZipSpark_New::implementation
             
             LOG_INFO(L"Activating main window...");
             window.Activate();
+            
+            // Post-activation setup for creation mode
+            if (isCreationMode)
+            {
+                try 
+                {
+                    auto mainWindow = window.as<implementation::MainWindow>();
+                    if (mainWindow)
+                    {
+                        mainWindow->ShowCreationUI(creationFiles, creationFormat);
+                    }
+                }
+                catch(...)
+                {
+                    LOG_ERROR(L"Failed to initialize creation UI");
+                }
+            }
             LOG_INFO(L"Main window activated successfully");
             LOG_INFO(L"Log file location: " + ZipSpark::Logger::GetInstance().GetLogFilePath());
         }

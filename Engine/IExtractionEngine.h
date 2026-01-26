@@ -22,6 +22,9 @@ public:
     // Extract the archive
     virtual void Extract(const ArchiveInfo& info, const ExtractionOptions& options, IProgressCallback* callback) = 0;
 
+    // Create a new archive
+    virtual void CreateArchive(const std::wstring& destinationPath, const std::vector<std::wstring>& sourceFiles, const std::wstring& format, IProgressCallback* callback) = 0;
+
     // Cancel ongoing extraction
     virtual void Cancel() = 0;
 

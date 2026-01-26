@@ -7,4 +7,5 @@
   <Project Path="ZipSpark-New.vcxproj" Id="5d232a28-b1cd-482a-b73d-b67c61838863">
     <Deploy />
   </Project>
+  <Project Path="ZipSpark.ShellExtension\ZipSpark.ShellExtension.vcxproj" Id="E4C8ECDF-C319-4842-8349-166341235149" />
 </Solution>

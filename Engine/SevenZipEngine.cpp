@@ -239,6 +239,106 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     }
 }
 
+void SevenZipEngine::CreateArchive(const std::wstring& destinationPath, const std::vector<std::wstring>& sourceFiles, const std::wstring& format, IProgressCallback* callback)
+{
+    m_cancelled = false;
+    
+    std::wstring exe7z = Get7zExePath();
+    if (exe7z.empty())
+    {
+        LOG_ERROR(L"7z.exe not found!");
+        if (callback) 
+        {
+            callback->OnError(ErrorCode::ExtractionFailed, L"7z.exe is missing. Cannot create archive.");
+        }
+        return;
+    }
+    
+    // Create temporary file list
+    // 7-Zip supports list files with @listfile
+    WCHAR tempPath[MAX_PATH];
+    GetTempPathW(MAX_PATH, tempPath);
+    WCHAR listFileName[MAX_PATH];
+    GetTempFileNameW(tempPath, L"7ZL", 0, listFileName);
+    
+    FILE* f = nullptr;
+    _wfopen_s(&f, listFileName, L"w, ccs=UTF-8");
+    if (!f)
+    {
+        LOG_ERROR(L"Failed to create list file");
+        if (callback) callback->OnError(ErrorCode::UnknownError, L"Failed to create temporary list file");
+        return;
+    }
+    
+    for (const auto& file : sourceFiles)
+    {
+        fwprintf(f, L"%s\n", file.c_str());
+    }
+    fclose(f);
+    
+    // Command: 7z.exe a -t<format> "Destination" @listfile
+    std::wstringstream cmd;
+    cmd << L"\"" << exe7z << L"\" a -t" << (format.empty() ? L"zip" : format.substr(1)) << L" \"" << destinationPath << L"\" \"@" << listFileName << L"\"";
+    
+    if (callback) callback->OnStart(static_cast<int>(sourceFiles.size()));
+    
+    LOG_INFO(L"Launching 7-Zip Creation: " + cmd.str());
+    
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi = { 0 };
+    
+    std::wstring cmdStr = cmd.str();
+    std::vector<wchar_t> cmdVec(cmdStr.begin(), cmdStr.end());
+    cmdVec.push_back(0);
+    
+    if (CreateProcessW(NULL, cmdVec.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+    {
+        m_hSubProcess = pi.hProcess;
+        CloseHandle(pi.hThread);
+        
+        while (true)
+        {
+            DWORD waitResult = WaitForSingleObject(pi.hProcess, 100);
+            if (waitResult == WAIT_OBJECT_0) break;
+            
+            if (m_cancelled)
+            {
+                TerminateProcess(pi.hProcess, 1);
+                break;
+            }
+        }
+        
+        DWORD exitCode = 0;
+        GetExitCodeProcess(pi.hProcess, &exitCode);
+        CloseHandle(pi.hProcess);
+        m_hSubProcess = nullptr;
+        
+        // Cleanup list file
+        DeleteFileW(listFileName);
+        
+        if (m_cancelled)
+        {
+             if (callback) callback->OnError(ErrorCode::CancellationRequested, L"Cancelled");
+             return;
+        }
+        
+        if (exitCode == 0)
+        {
+             if (callback) callback->OnComplete(destinationPath);
+        }
+        else
+        {
+             if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"7-Zip Error Code: " + std::to_wstring(exitCode));
+        }
+    }
+    else
+    {
+        DeleteFileW(listFileName);
+        DWORD err = GetLastError();
+        if (callback) callback->OnError(ErrorCode::UnknownError, L"Failed to launch 7z.exe (Create)");
+    }
+}
+
 void SevenZipEngine::Cancel()
 {
     m_cancelled = true;

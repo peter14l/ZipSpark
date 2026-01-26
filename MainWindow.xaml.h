@@ -29,7 +29,14 @@ namespace winrt::ZipSpark_New::implementation
         void OnComplete(const std::wstring& destination) override;
         void OnError(ZipSpark::ErrorCode errorCode, const std::wstring& message) override;
 
+        // Creation Mode
+        void ShowCreationUI(const std::vector<std::wstring>& files, const std::wstring& format);
+
     private:
+        // Creation helpers
+        void SetupCreationView();
+        winrt::fire_and_forget StartCreation(const std::wstring& format, const std::vector<std::wstring>& files);
+
         // Thread-safe callback wrapper to marshal extraction callbacks to UI thread
         class ThreadSafeCallback : public ZipSpark::IProgressCallback
         {
@@ -163,6 +170,12 @@ namespace winrt::ZipSpark_New::implementation
         std::chrono::steady_clock::time_point m_lastSpeedUpdate;
         int m_totalFiles{ 0 };
         int m_currentFileIndex{ 0 };
+
+        // Creation State
+        std::vector<std::wstring> m_creationFiles;
+        std::wstring m_creationFormat;
+        bool m_isCreating{ false };
+
     };
 }
 
