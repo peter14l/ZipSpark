@@ -37,16 +37,24 @@ namespace winrt::ZipSpark_New::implementation
             winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher;
             winrt::weak_ref<implementation::MainWindow> m_weakTarget;
             
+            // Throttling
+            std::chrono::steady_clock::time_point m_lastUIUpdate;
+            std::chrono::steady_clock::time_point m_lastFileUIUpdate;
+            
         public:
             ThreadSafeCallback(
                 winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher,
                 winrt::weak_ref<implementation::MainWindow> weakTarget)
                 : m_dispatcher(dispatcher), m_weakTarget(weakTarget)
             {
+                auto now = std::chrono::steady_clock::now();
+                m_lastUIUpdate = now;
+                m_lastFileUIUpdate = now;
             }
             
             void OnStart(int totalFiles) override
             {
+                // Always send start
                 bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, totalFiles]() {
                     if (auto target = weakTarget.get())
                     {
@@ -61,6 +69,15 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes) override
             {
+                // Throttling: 10fps (100ms)
+                auto now = std::chrono::steady_clock::now();
+                if (percentComplete < 100 && 
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastUIUpdate).count() < 100)
+                {
+                    return;
+                }
+                m_lastUIUpdate = now;
+
                 bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, percentComplete, bytesProcessed, totalBytes]() {
                     if (auto target = weakTarget.get())
                     {
@@ -75,6 +92,15 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles) override
             {
+                // Throttling: 10fps (100ms)
+                auto now = std::chrono::steady_clock::now();
+                if (fileIndex < totalFiles && 
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUIUpdate).count() < 100)
+                {
+                    return;
+                }
+                m_lastFileUIUpdate = now;
+
                 bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, currentFile, fileIndex, totalFiles]() {
                     if (auto target = weakTarget.get())
                     {
@@ -89,6 +115,7 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnComplete(const std::wstring& destination) override
             {
+                // Always send complete
                 bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, destination]() {
                     if (auto target = weakTarget.get())
                     {
@@ -103,6 +130,7 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnError(ZipSpark::ErrorCode code, const std::wstring& message) override
             {
+                // Always send error
                 bool enqueued = m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, code, message]() {
                     if (auto target = weakTarget.get())
                     {
@@ -135,10 +163,6 @@ namespace winrt::ZipSpark_New::implementation
         std::chrono::steady_clock::time_point m_lastSpeedUpdate;
         int m_totalFiles{ 0 };
         int m_currentFileIndex{ 0 };
-        
-        // Throttling
-        std::chrono::steady_clock::time_point m_lastUIUpdate;
-        std::chrono::steady_clock::time_point m_lastFileUIUpdate;
     };
 }
 

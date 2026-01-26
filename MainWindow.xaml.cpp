@@ -277,31 +277,41 @@ namespace winrt::ZipSpark_New::implementation
     void MainWindow::ShowSuccessMessage(const std::wstring& destination)
     {
         DispatcherQueue().TryEnqueue([this, destination]() {
-            try
-            {
                 // Show success state in the UI
-                DropZoneTitle().Text(L"✓ Extraction Complete!");
+                DropZoneTitle().Text(L"\u2713 Extraction Complete!");
                 DropZoneTitle().Visibility(Visibility::Visible);
                 
                 ArchivePathText().Text(L"Files extracted to:\n" + winrt::hstring(destination));
                 ArchivePathText().Visibility(Visibility::Visible);
                 
-                ArchiveInfoText().Text(L"Opening folder in 10 seconds...");
-                ArchiveInfoText().Visibility(Visibility::Visible);
+                // Remove auto-open countdown
+                ArchiveInfoText().Visibility(Visibility::Collapsed);
                 
                 // Hide progress section
                 ProgressSection().Visibility(Visibility::Collapsed);
                 
-                // Open the destination folder
-                try
-                {
-                    std::wstring command = L"explorer.exe \"" + destination + L"\"";
-                    _wsystem(command.c_str());
-                }
-                catch (...)
-                {
-                    LOG_ERROR(L"Failed to open destination folder");
-                }
+                // Reset to empty state after 10 seconds (optional, keeping this for now but removing the folder open)
+                auto strong_this = get_strong();
+                DispatcherQueue().TryEnqueue(winrt::Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, [strong_this]() {
+                    // Wait 10 seconds
+                    std::this_thread::sleep_for(std::chrono::seconds(10));
+                    
+                    // Reset UI on dispatcher thread
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        // Only reset if we haven't started a new extraction
+                        if (!strong_this->m_extracting)
+                        {
+                            strong_this->DropZoneTitle().Text(L"Drop Archive Here");
+                            strong_this->DropZoneTitle().Visibility(Visibility::Visible);
+                            
+                            strong_this->ArchivePathText().Visibility(Visibility::Collapsed);
+                            strong_this->ArchiveInfoText().Visibility(Visibility::Collapsed);
+                            
+                            strong_this->SupportedFormatsPanel().Visibility(Visibility::Visible);
+                            strong_this->BrowseButton().Visibility(Visibility::Visible);
+                        }
+                    });
+                });
                 
                 // Reset to empty state after 10 seconds
                 auto strong_this = get_strong();
@@ -615,8 +625,6 @@ namespace winrt::ZipSpark_New::implementation
         m_currentFileIndex = 0;
         m_extractionStartTime = std::chrono::steady_clock::now();
         m_lastSpeedUpdate = m_extractionStartTime;
-        m_lastUIUpdate = m_extractionStartTime;
-        m_lastFileUIUpdate = m_extractionStartTime;
         m_lastBytesProcessed = 0;
         
         DispatcherQueue().TryEnqueue([this]() {
@@ -627,30 +635,12 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes)
     {
-        // Throttle updates to ~10fps (100ms) to prevent UI thread starvation
-        auto now = std::chrono::steady_clock::now();
-        if (percentComplete < 100 && 
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastUIUpdate).count() < 100)
-        {
-            return;
-        }
-        m_lastUIUpdate = now;
-
         UpdateProgressUI(percentComplete, bytesProcessed, totalBytes);
     }
 
     void MainWindow::OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles)
     {
         m_currentFileIndex = fileIndex;
-        
-        // Throttle file progress updates too (100ms)
-        auto now = std::chrono::steady_clock::now();
-        if (fileIndex < totalFiles && 
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUIUpdate).count() < 100)
-        {
-            return;
-        }
-        m_lastFileUIUpdate = now;
         
         DispatcherQueue().TryEnqueue([this, currentFile, fileIndex, totalFiles]() {
             // Show file count
