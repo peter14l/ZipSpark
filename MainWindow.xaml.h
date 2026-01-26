@@ -161,7 +161,7 @@ namespace winrt::ZipSpark_New::implementation
         void ShowSuccessMessage(const std::wstring& destination);
         
         std::wstring m_archivePath;
-        std::unique_ptr<ZipSpark::IExtractionEngine> m_engine;
+        std::unique_ptr<ZipSpark::IExtractionEngine> m_currentEngine;
         std::atomic<bool> m_extracting{ false };
         
         // Progress tracking

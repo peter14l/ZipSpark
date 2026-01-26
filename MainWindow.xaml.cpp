@@ -6,6 +6,7 @@
 #include "PreferencesWindow.xaml.h"
 
 #include "Engine/EngineFactory.h"
+#include "Engine/SevenZipEngine.h"
 #include "Core/ArchiveInfo.h"
 #include "Core/ExtractionOptions.h"
 #include "Utils/Logger.h"
@@ -363,15 +364,15 @@ namespace winrt::ZipSpark_New::implementation
             {
                 // Fix: Use member variable m_archivePath as the reference parameter 'archivePath' 
                 // might be invalid if it came from a temporary string (e.g. Drop handler)
-                strong_this->m_engine = ZipSpark::EngineFactory::CreateEngine(strong_this->m_archivePath);
+                strong_this->m_currentEngine = ZipSpark::EngineFactory::CreateEngine(strong_this->m_archivePath);
             }
             catch (...)
             {
                 LOG_ERROR(L"Exception in CreateEngine");
-                strong_this->m_engine = nullptr;
+                strong_this->m_currentEngine = nullptr;
             }
             
-            if (!strong_this->m_engine)
+            if (!strong_this->m_currentEngine)
             {
                 LOG_ERROR(L"Failed to create extraction engine");
                 // Switch back to UI thread for error handling
@@ -388,7 +389,7 @@ namespace winrt::ZipSpark_New::implementation
             {
                 LOG_INFO(L"Getting archive info");
                 // Fix: Use member variable here too
-                info = strong_this->m_engine->GetArchiveInfo(strong_this->m_archivePath);
+                info = strong_this->m_currentEngine->GetArchiveInfo(strong_this->m_archivePath);
                 LOG_INFO(L"Archive info retrieved successfully");
             }
             catch (const std::exception& ex)
@@ -874,7 +875,8 @@ namespace winrt::ZipSpark_New::implementation
             
             // Using ThreadSafeCallback to marshal back to UI thread
             // Allocated on stack since CreateArchive is blocking and we are in a coroutine frame
-            ThreadSafeCallback callback(strong_this->DispatcherQueue(), strong_this.get());
+            winrt::weak_ref<implementation::MainWindow> weakThis = strong_this;
+            ThreadSafeCallback callback(strong_this->DispatcherQueue(), weakThis);
             
             strong_this->m_currentEngine.reset(engine.release()); // Store engine to keep it alive
             strong_this->m_currentEngine->CreateArchive(destPath, files, format, &callback);
