@@ -277,6 +277,8 @@ namespace winrt::ZipSpark_New::implementation
     void MainWindow::ShowSuccessMessage(const std::wstring& destination)
     {
         DispatcherQueue().TryEnqueue([this, destination]() {
+            try
+            {
                 // Show success state in the UI
                 DropZoneTitle().Text(L"\u2713 Extraction Complete!");
                 DropZoneTitle().Visibility(Visibility::Visible);
@@ -290,7 +292,7 @@ namespace winrt::ZipSpark_New::implementation
                 // Hide progress section
                 ProgressSection().Visibility(Visibility::Collapsed);
                 
-                // Reset to empty state after 10 seconds (optional, keeping this for now but removing the folder open)
+                // Reset to empty state after 10 seconds
                 auto strong_this = get_strong();
                 DispatcherQueue().TryEnqueue(winrt::Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, [strong_this]() {
                     // Wait 10 seconds
@@ -309,28 +311,9 @@ namespace winrt::ZipSpark_New::implementation
                             
                             strong_this->SupportedFormatsPanel().Visibility(Visibility::Visible);
                             strong_this->BrowseButton().Visibility(Visibility::Visible);
+                            
+                            strong_this->m_extracting = false;
                         }
-                    });
-                });
-                
-                // Reset to empty state after 10 seconds
-                auto strong_this = get_strong();
-                DispatcherQueue().TryEnqueue(winrt::Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, [strong_this]() {
-                    // Wait 10 seconds
-                    std::this_thread::sleep_for(std::chrono::seconds(10));
-                    
-                    // Reset UI on dispatcher thread
-                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                        strong_this->DropZoneTitle().Text(L"Drop Archive Here");
-                        strong_this->DropZoneTitle().Visibility(Visibility::Visible);
-                        
-                        strong_this->ArchivePathText().Visibility(Visibility::Collapsed);
-                        strong_this->ArchiveInfoText().Visibility(Visibility::Collapsed);
-                        
-                        strong_this->SupportedFormatsPanel().Visibility(Visibility::Visible);
-                        strong_this->BrowseButton().Visibility(Visibility::Visible);
-                        
-                        strong_this->m_extracting = false;
                     });
                 });
             }
