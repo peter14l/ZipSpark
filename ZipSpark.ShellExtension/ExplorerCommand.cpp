@@ -52,6 +52,7 @@ IFACEMETHODIMP ExplorerCommand::GetToolTip(IShellItemArray* psiItemArray, LPWSTR
 
 IFACEMETHODIMP ExplorerCommand::GetCanonicalName(GUID* pguidCommandName)
 {
+    if (!pguidCommandName) return E_POINTER;
     try
     {
         *pguidCommandName = __uuidof(ExplorerCommand);
@@ -62,6 +63,7 @@ IFACEMETHODIMP ExplorerCommand::GetCanonicalName(GUID* pguidCommandName)
 
 IFACEMETHODIMP ExplorerCommand::GetState(IShellItemArray* psiItemArray, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState)
 {
+    if (!pCmdState) return E_POINTER;
     try
     {
         *pCmdState = ECS_ENABLED;
@@ -77,6 +79,7 @@ IFACEMETHODIMP ExplorerCommand::Invoke(IShellItemArray* psiItemArray, IBindCtx* 
 
 IFACEMETHODIMP ExplorerCommand::GetFlags(EXPCMDFLAGS* pFlags)
 {
+    if (!pFlags) return E_POINTER;
     try 
     {
         *pFlags = ECF_HASSUBCOMMANDS;
@@ -87,6 +90,8 @@ IFACEMETHODIMP ExplorerCommand::GetFlags(EXPCMDFLAGS* pFlags)
 
 IFACEMETHODIMP ExplorerCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum)
 {
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
     try
     {
         std::vector<ComPtr<IExplorerCommand>> commands;
@@ -112,8 +117,11 @@ IFACEMETHODIMP ExplorerCommand::SetSite(IUnknown* pUnkSite)
 
 IFACEMETHODIMP ExplorerCommand::GetSite(REFIID riid, void** ppvSite)
 {
+    if (!ppvSite) return E_POINTER;
+    *ppvSite = nullptr;
     try
     {
+        if (!m_site) return E_NOINTERFACE;
         return m_site.CopyTo(riid, ppvSite);
     }
     CATCH_RETURN();
@@ -130,6 +138,7 @@ EnumExplorerCommand::EnumExplorerCommand(std::vector<ComPtr<IExplorerCommand>> c
 
 IFACEMETHODIMP EnumExplorerCommand::Next(ULONG celt, IExplorerCommand** pUICommand, ULONG* pceltFetched)
 {
+    if (!pUICommand) return E_POINTER;
     try
     {
         ULONG fetched = 0;
@@ -163,6 +172,7 @@ IFACEMETHODIMP EnumExplorerCommand::Reset()
 
 IFACEMETHODIMP EnumExplorerCommand::Clone(IEnumExplorerCommand** ppenum)
 {
+    if (!ppenum) return E_POINTER;
     *ppenum = nullptr;
     return E_NOTIMPL;
 }
@@ -187,7 +197,9 @@ IFACEMETHODIMP SubCommand::GetTitle(IShellItemArray* psiItemArray, LPWSTR* ppszN
 
 IFACEMETHODIMP SubCommand::GetIcon(IShellItemArray* psiItemArray, LPWSTR* ppszIcon)
 {
-    return S_OK;
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr; // No icon for subcommands, but must initialize output
+    return E_NOTIMPL; // Return E_NOTIMPL to indicate no icon provided
 }
 
 IFACEMETHODIMP SubCommand::GetToolTip(IShellItemArray* psiItemArray, LPWSTR* ppszInfotip)
@@ -201,6 +213,7 @@ IFACEMETHODIMP SubCommand::GetToolTip(IShellItemArray* psiItemArray, LPWSTR* pps
 
 IFACEMETHODIMP SubCommand::GetCanonicalName(GUID* pguidCommandName)
 {
+    if (!pguidCommandName) return E_POINTER;
     try
     {
         *pguidCommandName = GUID_NULL;
@@ -211,6 +224,7 @@ IFACEMETHODIMP SubCommand::GetCanonicalName(GUID* pguidCommandName)
 
 IFACEMETHODIMP SubCommand::GetState(IShellItemArray* psiItemArray, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState)
 {
+    if (!pCmdState) return E_POINTER;
     try
     {
         *pCmdState = ECS_ENABLED;
@@ -297,6 +311,7 @@ IFACEMETHODIMP SubCommand::Invoke(IShellItemArray* psiItemArray, IBindCtx* pbc)
 
 IFACEMETHODIMP SubCommand::GetFlags(EXPCMDFLAGS* pFlags)
 {
+    if (!pFlags) return E_POINTER;
     try
     {
         *pFlags = ECF_DEFAULT;
@@ -307,5 +322,7 @@ IFACEMETHODIMP SubCommand::GetFlags(EXPCMDFLAGS* pFlags)
 
 IFACEMETHODIMP SubCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum)
 {
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
     return E_NOTIMPL; // No sub-sub commands
 }
