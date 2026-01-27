@@ -4,6 +4,7 @@
 #include "MainWindow.g.cpp"
 #endif
 #include "PreferencesWindow.xaml.h"
+#include "CreateArchiveDialog.xaml.h"
 
 #include "Engine/EngineFactory.h"
 #include "Engine/SevenZipEngine.h"
@@ -820,14 +821,41 @@ namespace winrt::ZipSpark_New::implementation
         
         LOG_INFO(L"ShowCreationUI called with " + std::to_wstring(files.size()) + L" files. Format: " + format);
         
+        // Determine default destination and archive name from the first file
+        if (!files.empty())
+        {
+            fs::path firstFile(files[0]);
+            m_creationDestination = firstFile.parent_path().wstring();
+            
+            if (files.size() == 1)
+            {
+                m_creationArchiveName = firstFile.stem().wstring();
+            }
+            else
+            {
+                m_creationArchiveName = firstFile.parent_path().filename().wstring();
+                if (m_creationArchiveName.empty())
+                {
+                    m_creationArchiveName = L"Archive";
+                }
+            }
+        }
+        
         DispatcherQueue().TryEnqueue([this]() {
-             SetupCreationView();
-             
-             // If implicit format, start immediately
-             if (!m_creationFormat.empty() && m_creationFormat != L"dialog")
-             {
-                 StartCreation(m_creationFormat, m_creationFiles);
-             }
+            SetupCreationView();
+            
+            // If explicit format (.zip or .7z), start immediately without dialog
+            if (!m_creationFormat.empty() && m_creationFormat != L"dialog")
+            {
+                // Build destination path
+                std::wstring destPath = m_creationDestination + L"\\" + m_creationArchiveName + m_creationFormat;
+                StartCreation(m_creationFormat, m_creationFiles, m_creationCompressionLevel);
+            }
+            else
+            {
+                // Show dialog for format selection
+                ShowCreateArchiveDialog();
+            }
         });
     }
 
@@ -848,48 +876,179 @@ namespace winrt::ZipSpark_New::implementation
         }
     }
 
-    winrt::fire_and_forget MainWindow::StartCreation(const std::wstring& format, const std::vector<std::wstring>& files)
+    winrt::fire_and_forget MainWindow::StartCreation(const std::wstring& format, const std::vector<std::wstring>& files, int compressionLevel)
     {
         auto strong_this = get_strong();
         
-        // Show progress UI
-        strong_this->StatusText().Text(L"Creating archive...");
-        strong_this->ProgressSection().Visibility(Visibility::Visible);
-        strong_this->FileProgressBar().IsIndeterminate(true);
+        if (files.empty())
+        {
+            LOG_WARNING(L"StartCreation called with no files");
+            co_return;
+        }
+        
+        LOG_INFO(L"StartCreation: format=" + format + L", files=" + std::to_wstring(files.size()) + L", compression=" + std::to_wstring(compressionLevel));
+        
+        // Update UI to show progress
+        strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+            strong_this->DropZoneTitle().Text(L"Creating Archive...");
+            strong_this->DropZoneTitle().Visibility(Visibility::Visible);
+            strong_this->StatusText().Text(L"Preparing files...");
+            strong_this->ProgressSection().Visibility(Visibility::Visible);
+            strong_this->ExtractButton().Visibility(Visibility::Collapsed);
+            strong_this->CancelButton().Visibility(Visibility::Visible);
+            strong_this->FileProgressBar().IsIndeterminate(true);
+        });
         
         co_await winrt::resume_background();
         
         try 
         {
-            if (files.empty()) return;
+            // Determine destination path
+            fs::path firstFile(files[0]);
+            std::wstring archiveName;
+            std::wstring destFolder;
             
-            // Determine destination: Same folder as first file
-            std::filesystem::path firstFile(files[0]);
-            std::wstring folderName = firstFile.parent_path().filename().wstring();
-            if (files.size() == 1) folderName = firstFile.stem().wstring();
+            // Use stored values if available (from dialog), otherwise compute defaults
+            if (!strong_this->m_creationArchiveName.empty())
+            {
+                archiveName = strong_this->m_creationArchiveName;
+            }
+            else
+            {
+                if (files.size() == 1)
+                {
+                    archiveName = firstFile.stem().wstring();
+                }
+                else
+                {
+                    archiveName = firstFile.parent_path().filename().wstring();
+                    if (archiveName.empty()) archiveName = L"Archive";
+                }
+            }
             
-            std::wstring destPath = (firstFile.parent_path() / (folderName + format)).wstring();
+            if (!strong_this->m_creationDestination.empty())
+            {
+                destFolder = strong_this->m_creationDestination;
+            }
+            else
+            {
+                destFolder = firstFile.parent_path().wstring();
+            }
             
-            // Use SevenZipEngine directly for this feature
+            std::wstring destPath = destFolder + L"\\" + archiveName + format;
+            
+            LOG_INFO(L"Creating archive at: " + destPath);
+            
+            // Update UI with destination
+            strong_this->DispatcherQueue().TryEnqueue([strong_this, destPath]() {
+                strong_this->ArchivePathText().Text(L"Creating: " + winrt::hstring(destPath));
+                strong_this->ArchivePathText().Visibility(Visibility::Visible);
+            });
+            
+            // Create the archive engine
             auto engine = std::make_unique<ZipSpark::SevenZipEngine>();
             
-            // Using ThreadSafeCallback to marshal back to UI thread
-            // Allocated on stack since CreateArchive is blocking and we are in a coroutine frame
+            // Setup thread-safe callback
             winrt::weak_ref<implementation::MainWindow> weakThis = strong_this;
             ThreadSafeCallback callback(strong_this->DispatcherQueue(), weakThis);
             
-            strong_this->m_currentEngine.reset(engine.release()); // Store engine to keep it alive
+            // Store engine to keep it alive during operation
+            strong_this->m_currentEngine.reset(engine.release());
+            
+            // Create the archive (blocking call on background thread)
             strong_this->m_currentEngine->CreateArchive(destPath, files, format, &callback);
             
-            // Engine will be cleaned up by m_currentEngine unique_ptr when replaced or reset
-            // But we should probably reset it when done to release file handles
+            // Clean up engine
             strong_this->m_currentEngine.reset();
+            
+            // Success is reported via callback->OnComplete
+            // If we get here without error, creation succeeded
+            LOG_INFO(L"Archive creation completed successfully");
+        }
+        catch (const std::exception& ex)
+        {
+            std::string what = ex.what();
+            std::wstring wwhat(what.begin(), what.end());
+            LOG_ERROR(L"Exception in StartCreation: " + wwhat);
+            strong_this->DispatcherQueue().TryEnqueue([strong_this, wwhat]() {
+                strong_this->OnError(ZipSpark::ErrorCode::UnknownError, L"Failed to create archive: " + wwhat);
+            });
         }
         catch (...)
         {
-             strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
-                 strong_this->OnError(ZipSpark::ErrorCode::UnknownError, L"Creation failed unexpectedly.");
-             });
+            LOG_ERROR(L"Unknown exception in StartCreation");
+            strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                strong_this->OnError(ZipSpark::ErrorCode::UnknownError, L"An unexpected error occurred while creating the archive.");
+            });
+        }
+        
+        // Reset creation state
+        strong_this->m_isCreating = false;
+    }
+    
+    winrt::fire_and_forget MainWindow::ShowCreateArchiveDialog()
+    {
+        auto strong_this = get_strong();
+        
+        try
+        {
+            LOG_INFO(L"Showing CreateArchiveDialog");
+            
+            // Create the dialog
+            auto dialog = winrt::make<CreateArchiveDialog>();
+            dialog.XamlRoot(this->Content().XamlRoot());
+            
+            // Initialize with file paths
+            auto fileVector = winrt::single_threaded_vector<winrt::hstring>();
+            for (const auto& file : m_creationFiles)
+            {
+                fileVector.Append(winrt::hstring(file));
+            }
+            dialog.Initialize(fileVector.GetView());
+            
+            // Show dialog and wait for result
+            auto result = co_await dialog.ShowAsync();
+            
+            if (dialog.WasConfirmed())
+            {
+                // Get settings from dialog
+                m_creationArchiveName = std::wstring(dialog.ArchiveName());
+                m_creationFormat = std::wstring(dialog.ArchiveFormat());
+                m_creationDestination = std::wstring(dialog.DestinationPath());
+                m_creationCompressionLevel = dialog.CompressionLevel();
+                
+                LOG_INFO(L"Dialog confirmed: " + m_creationArchiveName + m_creationFormat + L" -> " + m_creationDestination);
+                
+                // Start creation with the configured settings
+                StartCreation(m_creationFormat, m_creationFiles, m_creationCompressionLevel);
+            }
+            else
+            {
+                LOG_INFO(L"CreateArchiveDialog cancelled by user");
+                
+                // Reset UI
+                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                    strong_this->DropZoneTitle().Text(L"Drop Archive Here");
+                    strong_this->DropZoneTitle().Visibility(Visibility::Visible);
+                    strong_this->SupportedFormatsPanel().Visibility(Visibility::Visible);
+                    strong_this->BrowseButton().Visibility(Visibility::Visible);
+                    strong_this->ArchiveInfoText().Visibility(Visibility::Collapsed);
+                    strong_this->ArchivePathText().Visibility(Visibility::Collapsed);
+                    strong_this->ProgressSection().Visibility(Visibility::Collapsed);
+                });
+                
+                m_isCreating = false;
+            }
+        }
+        catch (const winrt::hresult_error& ex)
+        {
+            LOG_ERROR(L"WinRT error in ShowCreateArchiveDialog: " + std::wstring(ex.message()));
+            m_isCreating = false;
+        }
+        catch (...)
+        {
+            LOG_ERROR(L"Unknown error in ShowCreateArchiveDialog");
+            m_isCreating = false;
         }
     }
 }

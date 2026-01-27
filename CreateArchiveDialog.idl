@@ -1,0 +1,18 @@
+namespace ZipSpark_New
+{
+    [default_interface]
+    runtimeclass CreateArchiveDialog : Microsoft.UI.Xaml.Controls.ContentDialog
+    {
+        CreateArchiveDialog();
+        
+        // Properties for the dialog result
+        String ArchiveName{ get; };
+        String ArchiveFormat{ get; };
+        String DestinationPath{ get; };
+        Int32 CompressionLevel{ get; };
+        Boolean WasConfirmed{ get; };
+        
+        // Initialize with file paths
+        void Initialize(Windows.Foundation.Collections.IVectorView<String> filePaths);
+    }
+}

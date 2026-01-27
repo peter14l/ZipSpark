@@ -139,6 +139,9 @@
     <ClInclude Include="PreferencesWindow.xaml.h">
       <DependentUpon>PreferencesWindow.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="CreateArchiveDialog.xaml.h">
+      <DependentUpon>CreateArchiveDialog.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="Core\ArchiveInfo.h" />
     <ClInclude Include="Core\ExtractionOptions.h" />
     <ClInclude Include="Core\ExtractionProgress.h" />
@@ -157,6 +160,7 @@
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="MainWindow.xaml" />
     <Page Include="PreferencesWindow.xaml" />
+    <Page Include="CreateArchiveDialog.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -175,6 +179,9 @@
     <ClCompile Include="PreferencesWindow.xaml.cpp">
       <DependentUpon>PreferencesWindow.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="CreateArchiveDialog.xaml.cpp">
+      <DependentUpon>CreateArchiveDialog.xaml</DependentUpon>
+    </ClCompile>
     <ClCompile Include="Utils\Settings.cpp" />
     <ClCompile Include="Utils\NotificationManager.cpp" />
     <ClCompile Include="Utils\RecentFiles.cpp" />
@@ -188,6 +195,10 @@
     <Midl Include="PreferencesWindow.idl">
       <SubType>Code</SubType>
       <DependentUpon>PreferencesWindow.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="CreateArchiveDialog.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>CreateArchiveDialog.xaml</DependentUpon>
     </Midl>
   </ItemGroup>
   <ItemGroup>

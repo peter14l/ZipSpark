@@ -35,7 +35,8 @@ namespace winrt::ZipSpark_New::implementation
     private:
         // Creation helpers
         void SetupCreationView();
-        winrt::fire_and_forget StartCreation(const std::wstring& format, const std::vector<std::wstring>& files);
+        winrt::fire_and_forget StartCreation(const std::wstring& format, const std::vector<std::wstring>& files, int compressionLevel = 2);
+        winrt::fire_and_forget ShowCreateArchiveDialog();
 
         // Thread-safe callback wrapper to marshal extraction callbacks to UI thread
         class ThreadSafeCallback : public ZipSpark::IProgressCallback
@@ -174,7 +175,11 @@ namespace winrt::ZipSpark_New::implementation
         // Creation State
         std::vector<std::wstring> m_creationFiles;
         std::wstring m_creationFormat;
+        std::wstring m_creationDestination;
+        std::wstring m_creationArchiveName;
+        int m_creationCompressionLevel{ 2 };
         bool m_isCreating{ false };
+        std::wstring m_tempFileListPath; // Path to temp file from shell extension
 
     };
 }
