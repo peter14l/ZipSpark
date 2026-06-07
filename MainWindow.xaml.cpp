@@ -212,7 +212,7 @@ namespace winrt::ZipSpark_New::implementation
         });
     }
 
-    void MainWindow::StartExtraction(const std::wstring& archivePath)
+    void MainWindow::StartExtraction(const std::wstring& archivePath, const std::wstring& customDestination)
     {
         if (m_extracting)
             return;
@@ -230,7 +230,7 @@ namespace winrt::ZipSpark_New::implementation
         // Start extraction on background thread using WinRT async pattern
         // Capture a strong reference to keep the object alive
         auto strong_this = get_strong();
-        [strong_this, archivePath]() -> winrt::fire_and_forget
+        [strong_this, archivePath, customDestination]() -> winrt::fire_and_forget
         {
             try
             {
@@ -296,6 +296,7 @@ namespace winrt::ZipSpark_New::implementation
                 ZipSpark::ExtractionOptions options;
                 options.createSubfolder = !info.hasSingleRoot;
                 options.overwritePolicy = ZipSpark::OverwritePolicy::AutoRename;
+                options.destinationPath = customDestination;
                 
                 try
                 {
@@ -351,6 +352,145 @@ namespace winrt::ZipSpark_New::implementation
                 strong_this->m_extracting = false;
                 strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
                     strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"An unexpected error occurred during extraction.");
+                });
+            }
+        }();
+    }
+
+    void MainWindow::StartCompression(const std::wstring& sourcePath)
+    {
+        if (m_extracting)
+            return;
+        
+        m_extracting = true;
+        m_archivePath = sourcePath;
+        
+        LOG_INFO(L"Starting compression for: " + sourcePath);
+        
+        ShowExtractionProgress();
+        StatusText().Text(L"Compressing...");
+        FileProgressBar().IsIndeterminate(true);
+        
+        auto strong_this = get_strong();
+        [strong_this, sourcePath]() -> winrt::fire_and_forget
+        {
+            try
+            {
+                co_await winrt::resume_background();
+                
+                // For simplicity, we directly use SevenZipEngine logic here to compress
+                // Ideally this would go into a generic Engine factory
+                
+                fs::path src(sourcePath);
+                std::wstring dest = (src.parent_path() / src.stem()).wstring() + L".zip";
+                
+                // Engine path
+                wchar_t exePath[MAX_PATH];
+                GetModuleFileNameW(NULL, exePath, MAX_PATH);
+                fs::path appDir = fs::path(exePath).parent_path();
+                
+                fs::path p1 = appDir / L"7z.exe";
+                std::wstring exe7z = p1.wstring();
+                if (!fs::exists(p1)) {
+                    exe7z = (appDir / L"External" / L"7-Zip" / L"7z.exe").wstring();
+                }
+                
+                std::wstringstream cmd;
+                cmd << L"\"" << exe7z << L"\" a -tzip \"" << dest << L"\" \"" << sourcePath << L"\" -bsp1";
+                
+                HANDLE hStdOutRead = NULL;
+                HANDLE hStdOutWrite = NULL;
+                SECURITY_ATTRIBUTES saAttr; 
+                saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+                saAttr.bInheritHandle = TRUE; 
+                saAttr.lpSecurityDescriptor = NULL; 
+                
+                CreatePipe(&hStdOutRead, &hStdOutWrite, &saAttr, 0);
+                SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0);
+                
+                STARTUPINFOW si = { sizeof(si) };
+                si.hStdOutput = hStdOutWrite;
+                si.hStdError = hStdOutWrite;
+                si.dwFlags |= STARTF_USESTDHANDLES;
+                PROCESS_INFORMATION pi = { 0 };
+                
+                std::wstring cmdStr = cmd.str();
+                std::vector<wchar_t> cmdVec(cmdStr.begin(), cmdStr.end());
+                cmdVec.push_back(0);
+                
+                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                    strong_this->OnStart(1);
+                    strong_this->ArchivePathText().Text(L"Compressing to ZIP");
+                    strong_this->ArchivePathText().Visibility(Visibility::Visible);
+                });
+                
+                if (CreateProcessW(NULL, cmdVec.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+                {
+                    CloseHandle(pi.hThread);
+                    CloseHandle(hStdOutWrite);
+                    
+                    char buffer[1024];
+                    DWORD bytesRead;
+                    std::string currentLine;
+                    
+                    ThreadSafeCallback safeCallback(strong_this->DispatcherQueue(), strong_this->get_weak());
+                    
+                    while (strong_this->m_extracting) 
+                    {
+                        if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0)
+                        {
+                            buffer[bytesRead] = '\0';
+                            currentLine += buffer;
+                            size_t pos;
+                            while ((pos = currentLine.find('%')) != std::string::npos)
+                            {
+                                size_t startPos = pos;
+                                while (startPos > 0 && isspace(currentLine[startPos - 1])) startPos--;
+                                while (startPos > 0 && isdigit(currentLine[startPos - 1])) startPos--;
+                                if (startPos < pos)
+                                {
+                                    try {
+                                        int pct = std::stoi(currentLine.substr(startPos, pos - startPos));
+                                        safeCallback.OnProgress(pct, 0, 100);
+                                    } catch(...) {}
+                                }
+                                currentLine = currentLine.substr(pos + 1);
+                            }
+                            if (currentLine.length() > 512) currentLine = currentLine.substr(currentLine.length() - 256);
+                        }
+                        else break;
+                    }
+                    
+                    if (!strong_this->m_extracting)
+                    {
+                        LOG_INFO(L"Terminating 7z.exe (Compression cancelled)...");
+                        TerminateProcess(pi.hProcess, 1);
+                    }
+                    
+                    WaitForSingleObject(pi.hProcess, INFINITE);
+                    DWORD exitCode = 0;
+                    GetExitCodeProcess(pi.hProcess, &exitCode);
+                    CloseHandle(pi.hProcess);
+                    CloseHandle(hStdOutRead);
+                    
+                    if (exitCode == 0) safeCallback.OnComplete(dest);
+                    else safeCallback.OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Compression failed.");
+                }
+                else
+                {
+                    CloseHandle(hStdOutRead);
+                    CloseHandle(hStdOutWrite);
+                    strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                        strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Failed to start 7z.exe");
+                    });
+                }
+                strong_this->m_extracting = false;
+            }
+            catch (...)
+            {
+                strong_this->m_extracting = false;
+                strong_this->DispatcherQueue().TryEnqueue([strong_this]() {
+                    strong_this->OnError(ZipSpark::ErrorCode::ExtractionFailed, L"Unknown exception");
                 });
             }
         }();
@@ -418,18 +558,88 @@ namespace winrt::ZipSpark_New::implementation
                 if (items.Size() > 0)
                 {
                     auto file = items.GetAt(0).try_as<winrt::Windows::Storage::StorageFile>();
+                    auto folder = items.GetAt(0).try_as<winrt::Windows::Storage::StorageFolder>();
+                    
+                    std::wstring path;
+                    bool isArchive = false;
+                    
                     if (file)
                     {
-                        std::wstring path = file.Path().c_str();
-                        LOG_INFO(L"File dropped: " + path);
-                        
-                        // Start extraction
-                        LOG_INFO(L"Starting extraction for dropped file");
-                        StartExtraction(path);
+                        path = file.Path().c_str();
+                        // Simple extension check
+                        std::wstring ext = fs::path(path).extension().wstring();
+                        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+                        if (ext == L".zip" || ext == L".7z" || ext == L".rar" || ext == L".tar" || ext == L".gz" || ext == L".xz" || ext == L".tgz")
+                        {
+                            isArchive = true;
+                        }
                     }
-                    else
+                    else if (folder)
                     {
-                        LOG_WARNING(L"Dropped item is not a file");
+                        path = folder.Path().c_str();
+                    }
+                    
+                    if (!path.empty())
+                    {
+                        LOG_INFO(L"Item dropped: " + path);
+                        
+                        if (isArchive)
+                        {
+                            // Ask user for destination
+                            Controls::ContentDialog dialog;
+                            dialog.XamlRoot(this->Content().XamlRoot());
+                            dialog.Title(winrt::box_value(L"Extract Archive"));
+                            dialog.Content(winrt::box_value(L"Do you want to extract the archive here or choose a destination?"));
+                            dialog.PrimaryButtonText(L"Extract Here");
+                            dialog.SecondaryButtonText(L"Choose Destination...");
+                            dialog.CloseButtonText(L"Cancel");
+                            
+                            auto result = co_await dialog.ShowAsync();
+                            
+                            if (result == Controls::ContentDialogResult::Primary)
+                            {
+                                LOG_INFO(L"Starting extraction for dropped file");
+                                StartExtraction(path);
+                            }
+                            else if (result == Controls::ContentDialogResult::Secondary)
+                            {
+                                auto windowNative = this->try_as<::IWindowNative>();
+                                if (windowNative)
+                                {
+                                    HWND hwnd;
+                                    windowNative->get_WindowHandle(&hwnd);
+                                    
+                                    winrt::Windows::Storage::Pickers::FolderPicker picker;
+                                    auto initializeWithWindow = picker.as<::IInitializeWithWindow>();
+                                    initializeWithWindow->Initialize(hwnd);
+                                    
+                                    picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::Downloads);
+                                    picker.FileTypeFilter().Append(L"*");
+                                    
+                                    auto destFolder = co_await picker.PickSingleFolderAsync();
+                                    if (destFolder)
+                                    {
+                                        StartExtraction(path, destFolder.Path().c_str());
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Handle creation
+                            Controls::ContentDialog dialog;
+                            dialog.XamlRoot(this->Content().XamlRoot());
+                            dialog.Title(winrt::box_value(L"Create Archive"));
+                            dialog.Content(winrt::box_value(L"Do you want to create a ZIP archive from this item?"));
+                            dialog.PrimaryButtonText(L"Create ZIP");
+                            dialog.CloseButtonText(L"Cancel");
+                            
+                            auto result = co_await dialog.ShowAsync();
+                            if (result == Controls::ContentDialogResult::Primary)
+                            {
+                                StartCompression(path);
+                            }
+                        }
                     }
                 }
                 else

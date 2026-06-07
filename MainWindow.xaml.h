@@ -121,7 +121,8 @@ namespace winrt::ZipSpark_New::implementation
         void SetupMicaBackdrop();
         void ShowExtractionProgress();
         void HideExtractionProgress();
-        void StartExtraction(const std::wstring& archivePath);
+        void StartExtraction(const std::wstring& archivePath, const std::wstring& customDestination = L"");
+        void StartCompression(const std::wstring& sourcePath);
         void UpdateProgressUI(int percent, uint64_t bytesProcessed, uint64_t totalBytes);
         void ShowErrorDialog(const std::wstring& title, const std::wstring& message);
         
