@@ -23,6 +23,7 @@
 #include <thread>
 #include <filesystem>
 #include <cctype>
+#include <cwctype>
 #include <algorithm>
 
 namespace fs = std::filesystem;
