@@ -116,47 +116,113 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     
     std::wstring dest = DetermineDestination(info, options);
     
-    // Command: 7z.exe x "Archive" -o"Dest" -y
+    // Command: 7z.exe x "Archive" -o"Dest" -y -bsp1
     std::wstringstream cmd;
-    cmd << L"\"" << exe7z << L"\" x \"" << info.archivePath << L"\" -o\"" << dest << L"\" -y";
+    cmd << L"\"" << exe7z << L"\" x \"" << info.archivePath << L"\" -o\"" << dest << L"\" -y -bsp1";
     
-    if (callback) callback->OnStart(0); // Indeterminate start
+    if (callback) callback->OnStart(info.fileCount);
     
     LOG_INFO(L"Launching 7-Zip: " + cmd.str());
     
+    HANDLE hStdOutRead = NULL;
+    HANDLE hStdOutWrite = NULL;
+
+    SECURITY_ATTRIBUTES saAttr; 
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+    saAttr.bInheritHandle = TRUE; 
+    saAttr.lpSecurityDescriptor = NULL; 
+
+    if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &saAttr, 0)) {
+        LOG_ERROR(L"Failed to create pipe for 7z.exe");
+        if (callback) callback->OnError(ErrorCode::EngineInitializationFailed, L"Failed to create stdout pipe.");
+        return;
+    }
+    SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0);
+
     STARTUPINFOW si = { sizeof(si) };
+    si.hStdOutput = hStdOutWrite;
+    si.hStdError = hStdOutWrite;
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    
     PROCESS_INFORMATION pi = { 0 };
     
-    // We need a mutable string for CreateProcess
     std::wstring cmdStr = cmd.str();
     std::vector<wchar_t> cmdVec(cmdStr.begin(), cmdStr.end());
     cmdVec.push_back(0);
     
-    if (CreateProcessW(NULL, cmdVec.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+    if (CreateProcessW(NULL, cmdVec.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
     {
-        m_hSubProcess = pi.hProcess; // Store for cancellation (naive, thread safety needed usually but simplified here)
+        m_hSubProcess = pi.hProcess;
         CloseHandle(pi.hThread);
+        CloseHandle(hStdOutWrite); // Close write end in parent
+        hStdOutWrite = NULL;
+
+        char buffer[1024];
+        DWORD bytesRead;
+        std::string currentLine;
         
-        // Wait for it to finish
-        // TODO: For better progress, we'd use pipes and PeekNamedPipe/ReadFile loop
-        // For now, we wait and poll for cancellation
-        
-        while (WaitForSingleObject(pi.hProcess, 100) == WAIT_TIMEOUT)
+        while (!m_cancelled)
         {
-            if (m_cancelled)
+            if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0)
             {
-                LOG_INFO(L"Terminating 7z.exe...");
-                TerminateProcess(pi.hProcess, 1);
+                buffer[bytesRead] = '\0';
+                currentLine += buffer;
+                
+                size_t pos;
+                // 7-Zip outputs progress separated by backspaces/carriage returns often, but we check \r and \n or backspace?
+                // Wait, -bsp1 uses carriage returns (\r) or backspaces. Let's just find any % sign and parse backward.
+                // It's safer to just look for '%' in the buffer, find the digits before it, and report.
+                while ((pos = currentLine.find('%')) != std::string::npos)
+                {
+                    size_t startPos = pos;
+                    while (startPos > 0 && isspace(currentLine[startPos - 1])) startPos--;
+                    while (startPos > 0 && isdigit(currentLine[startPos - 1])) startPos--;
+                    
+                    if (startPos < pos)
+                    {
+                        try {
+                            int pct = std::stoi(currentLine.substr(startPos, pos - startPos));
+                            uint64_t bytesProcessed = (info.totalSize * pct) / 100;
+                            
+                            std::wstring filename = L"Extracting...";
+                            // After '%', it might have " - filename". We can try to extract it but it's flaky. Let's stick to % for reliable Overall Progress
+                            
+                            if (callback)
+                            {
+                                callback->OnProgress(pct, bytesProcessed, info.totalSize);
+                                // if (filename != L"Extracting...") callback->OnFileProgress(filename, 0, info.fileCount);
+                            }
+                        } catch(...) {}
+                    }
+                    currentLine = currentLine.substr(pos + 1); // move past this %
+                }
+                
+                // Keep buffer from growing infinitely if no % found
+                if (currentLine.length() > 512) {
+                    currentLine = currentLine.substr(currentLine.length() - 256);
+                }
+            }
+            else
+            {
+                // Pipe closed or error
                 break;
             }
-            // Indeterminate progress update?
         }
+        
+        if (m_cancelled)
+        {
+            LOG_INFO(L"Terminating 7z.exe...");
+            TerminateProcess(pi.hProcess, 1);
+        }
+        
+        WaitForSingleObject(pi.hProcess, INFINITE);
         
         DWORD exitCode = 0;
         GetExitCodeProcess(pi.hProcess, &exitCode);
         
         CloseHandle(pi.hProcess);
         m_hSubProcess = nullptr;
+        CloseHandle(hStdOutRead);
         
         if (m_cancelled)
         {
@@ -177,6 +243,8 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     }
     else
     {
+        if (hStdOutRead) CloseHandle(hStdOutRead);
+        if (hStdOutWrite) CloseHandle(hStdOutWrite);
         DWORD err = GetLastError();
         LOG_ERROR(L"Failed to start 7z.exe. Error: " + std::to_wstring(err));
         if (callback) callback->OnError(ErrorCode::Unknown, L"Failed to launch extractor.");

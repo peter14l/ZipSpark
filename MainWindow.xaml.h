@@ -36,6 +36,8 @@ namespace winrt::ZipSpark_New::implementation
         private:
             winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher;
             winrt::weak_ref<implementation::MainWindow> m_weakTarget;
+            std::chrono::steady_clock::time_point m_lastProgressUpdate;
+            std::chrono::steady_clock::time_point m_lastFileUpdate;
             
         public:
             ThreadSafeCallback(
@@ -43,6 +45,9 @@ namespace winrt::ZipSpark_New::implementation
                 winrt::weak_ref<implementation::MainWindow> weakTarget)
                 : m_dispatcher(dispatcher), m_weakTarget(weakTarget)
             {
+                auto now = std::chrono::steady_clock::now();
+                m_lastProgressUpdate = now;
+                m_lastFileUpdate = now;
             }
             
             void OnStart(int totalFiles) override
@@ -57,6 +62,14 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes) override
             {
+                auto now = std::chrono::steady_clock::now();
+                if (percentComplete < 100 && 
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastProgressUpdate).count() < 100)
+                {
+                    return;
+                }
+                m_lastProgressUpdate = now;
+
                 m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, percentComplete, bytesProcessed, totalBytes]() {
                     if (auto target = weakTarget.get())
                     {
@@ -67,6 +80,14 @@ namespace winrt::ZipSpark_New::implementation
             
             void OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles) override
             {
+                auto now = std::chrono::steady_clock::now();
+                if (fileIndex < totalFiles - 1 && 
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUpdate).count() < 100)
+                {
+                    return;
+                }
+                m_lastFileUpdate = now;
+
                 m_dispatcher.TryEnqueue([weakTarget = m_weakTarget, currentFile, fileIndex, totalFiles]() {
                     if (auto target = weakTarget.get())
                     {

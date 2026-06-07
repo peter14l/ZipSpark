@@ -542,30 +542,12 @@ namespace winrt::ZipSpark_New::implementation
 
     void MainWindow::OnProgress(int percentComplete, uint64_t bytesProcessed, uint64_t totalBytes)
     {
-        // Throttle updates to ~10fps (100ms) to prevent UI thread starvation
-        auto now = std::chrono::steady_clock::now();
-        if (percentComplete < 100 && 
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastUIUpdate).count() < 100)
-        {
-            return;
-        }
-        m_lastUIUpdate = now;
-
         UpdateProgressUI(percentComplete, bytesProcessed, totalBytes);
     }
 
     void MainWindow::OnFileProgress(const std::wstring& currentFile, int fileIndex, int totalFiles)
     {
         m_currentFileIndex = fileIndex;
-        
-        // Throttle file progress updates too (100ms)
-        auto now = std::chrono::steady_clock::now();
-        if (fileIndex < totalFiles && 
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFileUIUpdate).count() < 100)
-        {
-            return;
-        }
-        m_lastFileUIUpdate = now;
         
         DispatcherQueue().TryEnqueue([this, currentFile, fileIndex, totalFiles]() {
             // Show file count
