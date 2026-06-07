@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$version = "2409"
+$version = "2408"
 $url = "https://www.7-zip.org/a/7z$version-extra.7z"
 $outputDir = Join-Path $PSScriptRoot "External\7-Zip"
 $zipFile = Join-Path $PSScriptRoot "7z.7z"
@@ -11,8 +11,8 @@ $zipFile = Join-Path $PSScriptRoot "7z.7z"
 Write-Host "Creating output directory: $outputDir"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
-Write-Host "Downloading 7-Zip from $url..."
-Invoke-WebRequest -Uri $url -OutFile $zipFile
+Write-Host "Skipping .7z download..."
+# Invoke-WebRequest -Uri $url -OutFile $zipFile
 
 Write-Host "Extracting 7-Zip..."
 # We can't use Expand-Archive for .7z files natively in older Powershell, 
