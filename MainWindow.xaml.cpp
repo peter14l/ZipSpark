@@ -22,6 +22,8 @@
 #include <Shobjidl.h>
 #include <thread>
 #include <filesystem>
+#include <cctype>
+#include <algorithm>
 
 namespace fs = std::filesystem;
 using namespace winrt;
