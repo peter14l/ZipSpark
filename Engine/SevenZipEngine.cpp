@@ -34,6 +34,7 @@ bool SevenZipEngine::CanHandle(const std::wstring& archivePath)
 
 bool SevenZipEngine::IsSupportedFormat(const std::wstring& extension)
 {
+    (void)extension;
     // 7-Zip handles almost everything
     return true; 
 }
@@ -110,7 +111,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
     if (exe7z.empty())
     {
         LOG_ERROR(L"7z.exe not found!");
-        if (callback) callback->OnError(ErrorCode::EngineInitializationFailed, L"7z.exe missing. Please reinstall.");
+        if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"7z.exe missing. Please reinstall.");
         return;
     }
     
@@ -134,7 +135,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
 
     if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &saAttr, 0)) {
         LOG_ERROR(L"Failed to create pipe for 7z.exe");
-        if (callback) callback->OnError(ErrorCode::EngineInitializationFailed, L"Failed to create stdout pipe.");
+        if (callback) callback->OnError(ErrorCode::ExtractionFailed, L"Failed to create stdout pipe.");
         return;
     }
     SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0);
@@ -226,7 +227,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
         
         if (m_cancelled)
         {
-             if (callback) callback->OnError(ErrorCode::Unknown, L"Cancelled");
+             if (callback) callback->OnError(ErrorCode::CancellationRequested, L"Cancelled");
              return;
         }
         
@@ -247,7 +248,7 @@ void SevenZipEngine::Extract(const ArchiveInfo& info, const ExtractionOptions& o
         if (hStdOutWrite) CloseHandle(hStdOutWrite);
         DWORD err = GetLastError();
         LOG_ERROR(L"Failed to start 7z.exe. Error: " + std::to_wstring(err));
-        if (callback) callback->OnError(ErrorCode::Unknown, L"Failed to launch extractor.");
+        if (callback) callback->OnError(ErrorCode::UnknownError, L"Failed to launch extractor.");
     }
 }
 
