@@ -37,10 +37,10 @@ jobs:
     - name: Set vcpkg root
       run: echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
 
-    - name: Install libarchive (Compile-time dependency)
+    - name: Install libarchive and dependencies (Compile-time dependency)
       run: |
-        .\vcpkg\vcpkg install libarchive:x64-windows-static
-        echo "Libarchive installed successfully"
+        .\vcpkg\vcpkg install libarchive:x64-windows-static zlib:x64-windows-static bzip2:x64-windows-static lzma:x64-windows-static lz4:x64-windows-static zstd:x64-windows-static openssl:x64-windows-static
+        echo "Libarchive and dependencies installed successfully"
         
     - name: Set vcpkg environment
       run: |
