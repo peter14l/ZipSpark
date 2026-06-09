@@ -39,7 +39,7 @@ jobs:
 
     - name: Install libarchive and dependencies
       run: |
-        .\vcpkg\vcpkg install libarchive:x64-windows-static zlib:x64-windows-static bzip2:x64-windows-static lzma:x64-windows-static lz4:x64-windows-static zstd:x64-windows-static openssl:x64-windows-static
+        .\vcpkg\vcpkg install libarchive:x64-windows-static zlib:x64-windows-static bzip2:x64-windows-static liblzma:x64-windows-static lz4:x64-windows-static zstd:x64-windows-static openssl:x64-windows-static
         echo "Libarchive and dependencies installed successfully"
         
     - name: Set vcpkg environment
